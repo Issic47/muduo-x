@@ -120,10 +120,6 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="common.gypi" />
-    <None Include="uv.gyp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="muduo\base\AsyncLogging.cc">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </ExcludedFromBuild>
