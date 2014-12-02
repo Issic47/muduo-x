@@ -10,7 +10,6 @@
 #include <boost/noncopyable.hpp>
 #include <uv.h>
 #include <cassert>
-#include <thread>
 
 #ifdef CHECK_PTHREAD_RETURN_VALUE
 

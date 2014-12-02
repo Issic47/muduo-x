@@ -11,6 +11,7 @@
 #include <muduo/base/Logging.h> // strerror_tl
 
 #include <boost/static_assert.hpp>
+#include <uv.h>
 
 #include <assert.h>
 #include <errno.h>
@@ -18,14 +19,47 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
+namespace muduo 
+{
+namespace utilities
+{
+
+class FSReqAutoCleanup : public boost::noncopyable 
+{
+public:
+  explicit FSReqAutoCleanup(uv_fs_t *req)
+    : req_(req) 
+  {}
+
+  ~FSReqAutoCleanup() {
+    if (req_) {
+      uv_fs_req_cleanup(req_);
+    }
+  }
+
+private:
+  uv_fs_t *req_;
+};
+
+} // !namespace utilities
+} // !namespace muduo
+
 using namespace muduo;
 
 FileUtil::AppendFile::AppendFile(StringArg filename)
-  : fp_(::fopen(filename.c_str(), "ae")),  // 'e' for O_CLOEXEC
+  : 
+// FIXME(cbj)
+#if defined(_WIN32)
+    fp_(::fopen(filename.c_str(), "a")),
+#else
+    fp_(::fopen(filename.c_str(), "ae")),  // 'e' for O_CLOEXEC
+#endif
     writtenBytes_(0)
 {
   assert(fp_);
-#if !defined(_WIN32)
+#if defined(NATIVE_WIN32)
+  ::setvbuf(fp_, buffer_, _IOFBF, sizeof buffer_);
+#else
   ::setbuffer(fp_, buffer_, sizeof buffer_);
   // posix_fadvise POSIX_FADV_DONTNEED ?
 #endif
@@ -71,18 +105,20 @@ size_t FileUtil::AppendFile::write(const char* logline, size_t len)
 }
 
 FileUtil::ReadSmallFile::ReadSmallFile(StringArg filename)
-  : 
-#if defined(_WIN32)
-  fd_(::open(filename.c_str(), O_RDONLY)),
-#else
-  fd_(::open(filename.c_str(), O_RDONLY | O_CLOEXEC)),
-#endif
-    err_(0)
+  : fd_(0), err_(0)
 {
   buf_[0] = '\0';
-  if (fd_ < 0)
+
+  uv_fs_t req;
+  utilities::FSReqAutoCleanup helper(&req);
+  err_ = uv_fs_open(NULL, &req, filename.c_str(), O_RDONLY, 0, NULL);
+  if (err_ == 0)
   {
-    err_ = errno;
+    fd_ = req.result;
+    if (fd_ < 0) 
+    {
+      err_ = req.result;
+    }
   }
 }
 
@@ -90,9 +126,12 @@ FileUtil::ReadSmallFile::~ReadSmallFile()
 {
   if (fd_ >= 0)
   {
-    ::close(fd_); // FIXME: check EINTR
+    uv_fs_t req;
+    err_ = uv_fs_close(NULL, &req, fd_, NULL);
+    uv_fs_req_cleanup(&req);
   }
 }
+
 
 // return errno
 template<typename String>
@@ -111,37 +150,47 @@ int FileUtil::ReadSmallFile::readToString(int maxSize,
 
     if (fileSize)
     {
-      struct stat statbuf;
-      if (::fstat(fd_, &statbuf) == 0)
+      uv_fs_t fstat_req;
+      utilities::FSReqAutoCleanup helper(&fstat_req);
+      err = uv_fs_fstat(NULL, &fstat_req, fd_, NULL);
+      if (err == 0)
       {
-        if (S_ISREG(statbuf.st_mode))
+        if ((err=fstat_req.result) == 0) 
         {
-          *fileSize = statbuf.st_size;
-          content->reserve(static_cast<int>(std::min(implicit_cast<int64_t>(maxSize), *fileSize)));
+          if (S_ISREG(fstat_req.statbuf.st_mode))
+          {
+            *fileSize = fstat_req.statbuf.st_size;
+            content->reserve(static_cast<int>((std::min)(implicit_cast<int64_t>(maxSize), *fileSize)));
+          }
+          else if (S_ISDIR(fstat_req.statbuf.st_mode))
+          {
+            err = UV_EISDIR;
+          }
+          if (modifyTime)
+          {
+            uv_timespec_t *timespec = &fstat_req.statbuf.st_mtim;
+            *modifyTime = timespec->tv_sec;
+          }
+          if (createTime)
+          {
+            uv_timespec_t *timespec = &fstat_req.statbuf.st_ctim;
+            *createTime = timespec->tv_sec;
+          }
         }
-        else if (S_ISDIR(statbuf.st_mode))
-        {
-          err = EISDIR;
-        }
-        if (modifyTime)
-        {
-          *modifyTime = statbuf.st_mtime;
-        }
-        if (createTime)
-        {
-          *createTime = statbuf.st_ctime;
-        }
-      }
-      else
-      {
-        err = errno;
       }
     }
 
     while (content->size() < implicit_cast<size_t>(maxSize))
     {
-      size_t toRead = std::min(implicit_cast<size_t>(maxSize) - content->size(), sizeof(buf_));
-      ssize_t n = ::read(fd_, buf_, toRead);
+      size_t toRead = (std::min)(implicit_cast<size_t>(maxSize) - content->size(), sizeof(buf_));
+      uv_fs_t read_req;
+      utilities::FSReqAutoCleanup helper(&read_req);
+      
+      uv_buf_t buf = uv_buf_init(buf_, toRead);
+      err = uv_fs_read(NULL, &read_req, fd_, &buf, 1, -1, NULL);
+      if (err) break;
+
+      ssize_t n = read_req.result;
       if (n > 0)
       {
         content->append(buf_, n);
@@ -150,7 +199,7 @@ int FileUtil::ReadSmallFile::readToString(int maxSize,
       {
         if (n < 0)
         {
-          err = errno;
+          err = read_req.result;
         }
         break;
       }
@@ -164,29 +213,37 @@ int FileUtil::ReadSmallFile::readToBuffer(int* size)
   int err = err_;
   if (fd_ >= 0)
   {
-    ssize_t n = ::pread(fd_, buf_, sizeof(buf_)-1, 0);
-    if (n >= 0)
-    {
-      if (size)
+    uv_fs_t read_req;
+    utilities::FSReqAutoCleanup helper(&read_req);
+    uv_buf_t buf = uv_buf_init(buf_, sizeof(buf_) - 1);
+    err = uv_fs_read(NULL, &read_req, fd_, &buf, 1, 0, NULL);
+    if (err == 0) {
+      ssize_t n = read_req.result;
+      if (n >= 0)
       {
-        *size = static_cast<int>(n);
+        if (size)
+        {
+          *size = static_cast<int>(n);
+        }
+        buf_[n] = '\0';
       }
-      buf_[n] = '\0';
-    }
-    else
-    {
-      err = errno;
+      else
+      {
+        err = read_req.result;
+      }
     }
   }
   return err;
 }
 
-template int FileUtil::readFile(StringArg filename,
+template<> 
+int FileUtil::readFile(StringArg filename,
                                 int maxSize,
                                 string* content,
                                 int64_t*, int64_t*, int64_t*);
 
-template int FileUtil::ReadSmallFile::readToString(
+template<>
+int FileUtil::ReadSmallFile::readToString(
     int maxSize,
     string* content,
     int64_t*, int64_t*, int64_t*);

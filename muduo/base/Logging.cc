@@ -10,7 +10,6 @@
 #include <string.h>
 
 #include <sstream>
-#include <thread>
 
 namespace muduo
 {

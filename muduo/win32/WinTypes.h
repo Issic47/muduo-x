@@ -5,71 +5,23 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include <windows.h>
-#include <io.h>
-
-#ifndef strerror_r
-#define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
 
-#ifndef snprintf
-
-#define snprintf c99_snprintf
-inline int c99_vsnprintf(char* str, size_t size, const char* format, va_list ap)
-{
-  int count = -1;
-
-  if (size != 0)
-    count = _vsnprintf_s(str, size, _TRUNCATE, format, ap);
-  if (count == -1)
-    count = _vscprintf(format, ap);
-
-  return count;
-}
-
-inline int c99_snprintf(char* str, size_t size, const char* format, ...)
-{
-  int count;
-  va_list ap;
-
-  va_start(ap, format);
-  count = c99_vsnprintf(str, size, format, ap);
-  va_end(ap);
-
-  return count;
-}
-
-#endif // !snprintf
-
-extern int gettimeofday(struct timeval *tv, void* tz);
-
-inline struct tm* gmtime_r(const time_t *_Time, struct tm * _Tm) {
-  errno_t err = gmtime_s(_Tm, _Time);
-  return err == EINVAL ? NULL : _Tm;
-}
-
-extern time_t timegm(struct tm *tm);
+#include <windows.h>
 
 #ifndef __func__
 #define __func__ __FUNCTION__
 #endif
 
-inline void bzero(void *b, size_t len) {
-  memset(b, 0, len);
-}
-
 #ifndef pid_t
 #define pid_t DWORD
 #endif // !pid_t
 
-inline pid_t get_cur_pid() {
-  return GetCurrentThreadId();
-}
-
-// Use fread/fwrite/fflush on platforms without _unlocked variants
-#define fread_unlocked fread
-#define fwrite_unlocked fwrite
-#define fflush_unlocked fflush
+#ifndef uid_t
+#define uid_t int
+#endif
 
 /* Format for printing 64-bit signed decimal numbers */
 #ifndef PRId64
@@ -129,5 +81,56 @@ inline pid_t get_cur_pid() {
 #define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
 #endif
 
+// Use fread/fwrite/fflush on platforms without _unlocked variants
+#define fread_unlocked fread
+#define fwrite_unlocked fwrite
+#define fflush_unlocked fflush
+
+#ifndef strerror_r
+#define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
+#endif
+
+#ifndef snprintf
+#define snprintf c99_snprintf
+inline int c99_vsnprintf(char* str, size_t size, const char* format, va_list ap)
+{
+  int count = -1;
+
+  if (size != 0)
+    count = _vsnprintf_s(str, size, _TRUNCATE, format, ap);
+  if (count == -1)
+    count = _vscprintf(format, ap);
+
+  return count;
+}
+
+inline int c99_snprintf(char* str, size_t size, const char* format, ...)
+{
+  int count;
+  va_list ap;
+
+  va_start(ap, format);
+  count = c99_vsnprintf(str, size, format, ap);
+  va_end(ap);
+
+  return count;
+}
+#endif // !snprintf
+
+struct timeval;
+extern int gettimeofday(struct timeval *tv, void* tz);
+
+inline struct tm* gmtime_r(const time_t *_Time, struct tm * _Tm) 
+{
+  errno_t err = gmtime_s(_Tm, _Time);
+  return err == EINVAL ? NULL : _Tm;
+}
+
+extern time_t timegm(struct tm *tm);
+
+inline void bzero(void *b, size_t len) 
+{
+  memset(b, 0, len);
+}
 
 #endif // !MUDUO_WIN_TYPES_H

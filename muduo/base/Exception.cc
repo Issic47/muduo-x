@@ -5,8 +5,13 @@
 
 #include <muduo/base/Exception.h>
 
+#if defined(NATIVE_WIN32)
+#include <muduo/win32/WinFunc.h>
+#else
 //#include <cxxabi.h>
 #include <execinfo.h>
+#endif
+
 #include <stdlib.h>
 
 using namespace muduo;
@@ -39,6 +44,9 @@ const char* Exception::stackTrace() const throw()
 
 void Exception::fillStackTrace()
 {
+#if defined(NATIVE_WIN32)
+  stack_ = win_stacktrace();
+#else
   const int len = 200;
   void* buffer[len];
   int nptrs = ::backtrace(buffer, len);
@@ -53,5 +61,6 @@ void Exception::fillStackTrace()
     }
     free(strings);
   }
+#endif
 }
 

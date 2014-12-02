@@ -13,15 +13,19 @@
 #include <boost/type_traits/is_same.hpp>
 #include <boost/weak_ptr.hpp>
 
+#include <thread>
+
 #include <errno.h>
 #include <stdio.h>
 #include <sys/types.h>
 
-#if !defined(_WIN32)
-//#include <unistd.h>
-//#include <sys/prctl.h>
-//#include <sys/syscall.h>
-//#include <linux/unistd.h>
+#if defined(NATIVE_WIN32)
+#include <muduo/win32/WinFunc.h>
+#else
+#include <unistd.h>
+#include <sys/prctl.h>
+#include <sys/syscall.h>
+#include <linux/unistd.h>
 #endif
 
 namespace muduo
@@ -32,6 +36,7 @@ namespace CurrentThread
   thread_local char t_tidString[32];
   thread_local int t_tidStringLength = 6;
   thread_local const char* t_threadName = "unknown";
+  // FIXME(cbj):
   //const bool sameType = boost::is_same<int, pid>::value;
   //BOOST_STATIC_ASSERT(sameType);  
 }
@@ -43,8 +48,8 @@ std::atomic<pid_t> main_thread_id;
 
 pid_t gettid()
 {
-#if defined(_WIN32)
-  return get_cur_pid();
+#if defined(NATIVE_WIN32)
+  return win_get_thread_id();
 #else
   return static_cast<pid_t>(::syscall(SYS_gettid));
 #endif
@@ -65,7 +70,10 @@ class ThreadNameInitializer
   {
     muduo::CurrentThread::t_threadName = "main";
     main_thread_id.store(CurrentThread::tid());
-    // FIXME:
+    
+    uv_disable_stdio_inheritance();
+
+    // FIXME(cbj):
     //pthread_atfork(NULL, NULL, &afterFork);
   }
 };
@@ -99,6 +107,7 @@ struct ThreadData
     }
 
     muduo::CurrentThread::t_threadName = name_.empty() ? "muduoThread" : name_.c_str();
+    // FIXME(cbj):
     //::prctl(PR_SET_NAME, muduo::CurrentThread::t_threadName);
     try
     {
@@ -136,8 +145,8 @@ void startThread(void* obj)
   delete data;
 }
 
-}
-}
+} // !namespace detail
+} // !namespace muduo
 
 using namespace muduo;
 

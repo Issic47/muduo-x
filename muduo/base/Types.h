@@ -35,7 +35,9 @@
 
 #include <uv.h>
 
-#if defined(_WIN32)
+/* This implementation is only for native Win32 systems.  */
+#if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
+#define NATIVE_WIN32
 #include <muduo/win32/WinTypes.h>
 #endif // _WIN32
 

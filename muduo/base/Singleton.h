@@ -7,7 +7,6 @@
 #define MUDUO_BASE_SINGLETON_H
 
 #include <boost/noncopyable.hpp>
-//#include <pthread.h>
 #include <uv.h>
 #include <stdlib.h> // atexit
 

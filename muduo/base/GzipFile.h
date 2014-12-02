@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MUDUO_GZIP_FILE_H
+#define MUDUO_GZIP_FILE_H
 
 #include <muduo/base/StringPiece.h>
 #include <boost/noncopyable.hpp>
@@ -81,4 +82,9 @@ class GzipFile : boost::noncopyable
   gzFile file_;
 };
 
-}
+} // !namespace muduo
+
+
+#endif // !MUDUO_GZIP_FILE_H
+
+

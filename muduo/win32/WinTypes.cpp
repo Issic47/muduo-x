@@ -1,10 +1,13 @@
 #include "WinTypes.h"
 
+#include <WinSock2.h>
+
 #include <cstdint>
+
 
 int gettimeofday(struct timeval *tv, void* tz) {
   FILETIME ft;
-  GetSystemTimeAsFileTime(&ft);
+  ::GetSystemTimeAsFileTime(&ft);
   uint64_t value = ((uint64_t) ft.dwHighDateTime << 32) | ft.dwLowDateTime;
   tv->tv_usec = (long) ((value / 10LL) % 1000000LL);
   tv->tv_sec = (long) ((value - 116444736000000000LL) / 10000000LL);
@@ -57,3 +60,4 @@ time_t timegm(struct tm *tm) {
   res += tm->tm_sec;
   return res;
 }
+

@@ -8,7 +8,6 @@
 
 #include <stdint.h>
 #include <muduo/base/Types.h>
-#include <thread>
 
 namespace muduo
 {
