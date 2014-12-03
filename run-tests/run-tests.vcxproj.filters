@@ -1,0 +1,90 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="failtest">
+      <UniqueIdentifier>{168c1604-2929-4b8c-8968-758ea0a17c4e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="passtest">
+      <UniqueIdentifier>{c3649dc5-90e5-4612-a001-2b20248d5e35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="resource">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="TimeZone_unittest.cc">
+      <Filter>failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="GzipFile_test.cc">
+      <Filter>failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="Fork_test.cc">
+      <Filter>failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="Atomic_unittest.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="BlockingQueue_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="Date_unittest.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="Exception_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="Singleton_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="Thread_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="Timestamp_unittest.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadLocal_test.cc">
+      <Filter>failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadPool_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="SingletonThreadLocal_test.cc">
+      <Filter>failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="BlockingQueue_bench.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="Mutex_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessInfo_test.cc">
+      <Filter>failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="FileUtil_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="basename.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="LogFile_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="AsyncLogging_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="LogStream_test.cc">
+      <Filter>failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="Thread_bench.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="LogStream_bench.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

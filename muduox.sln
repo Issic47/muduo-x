@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "muduox", "muduox.vcxproj", "{33066374-88CB-CB8D-15DA-61032886329A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "run-tests", "run-tests\run-tests.vcxproj", "{0C9869D5-2B40-49EE-8876-90B744FE8234}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -13,6 +15,10 @@ Global
 		{33066374-88CB-CB8D-15DA-61032886329A}.Debug|Win32.Build.0 = Debug|Win32
 		{33066374-88CB-CB8D-15DA-61032886329A}.Release|Win32.ActiveCfg = Release|Win32
 		{33066374-88CB-CB8D-15DA-61032886329A}.Release|Win32.Build.0 = Release|Win32
+		{0C9869D5-2B40-49EE-8876-90B744FE8234}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0C9869D5-2B40-49EE-8876-90B744FE8234}.Debug|Win32.Build.0 = Debug|Win32
+		{0C9869D5-2B40-49EE-8876-90B744FE8234}.Release|Win32.ActiveCfg = Release|Win32
+		{0C9869D5-2B40-49EE-8876-90B744FE8234}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
