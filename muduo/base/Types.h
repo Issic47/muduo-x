@@ -37,9 +37,17 @@
 
 /* This implementation is only for native Win32 systems.  */
 #if (defined _WIN32 || defined __WIN32__) && ! defined __CYGWIN__
+#ifndef NATIVE_WIN32
 #define NATIVE_WIN32
 #include <muduo/win32/WinTypes.h>
+#endif
 #endif // _WIN32
+
+#ifdef NATIVE_WIN32
+#define SSIZET_FMT "%ld"
+#else
+#define SSIZET_FMT "%zd"
+#endif
 
 /*
  * Where to look for offset from GMT, Phase I.

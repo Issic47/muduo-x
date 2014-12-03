@@ -20,10 +20,11 @@ namespace detail
 template<typename T>
 struct has_no_destroy
 {
-  template <typename C> static char test(decltype(&C::no_destroy));
-  template <typename C> static int32_t test(...);
-  const static bool value = sizeof(test<T>(0)) == 1;
+  template<typename U> static char Test(decltype(&U::no_destroy));
+  template<typename U> static int Test(...);
+  static const bool Has = sizeof(Test<T>(nullptr)) == sizeof(char);
 };
+
 }
 
 template<typename T>
@@ -43,9 +44,9 @@ class Singleton : boost::noncopyable
   static void init()
   {
     value_ = new T();
-    if (!detail::has_no_destroy<T>::value)
+    if (!detail::has_no_destroy<T>::Has)
     {
-      ::atexit(destroy);
+      int err = ::atexit(destroy);
     }
   }
 

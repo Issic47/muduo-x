@@ -82,9 +82,15 @@
 #endif
 
 // Use fread/fwrite/fflush on platforms without _unlocked variants
+#ifndef fread_unlocked
 #define fread_unlocked fread
+#endif
+#ifndef fwrite_unlocked
 #define fwrite_unlocked fwrite
+#endif
+#ifndef fflush_unlocked
 #define fflush_unlocked fflush
+#endif
 
 #ifndef strerror_r
 #define strerror_r(errno,buf,len) strerror_s(buf,len,errno)
@@ -132,5 +138,10 @@ inline void bzero(void *b, size_t len)
 {
   memset(b, 0, len);
 }
+
+extern char *strptime(const char *buf, const char *format, struct tm *tm);
+
+extern int strcasecmp(const char *s1, const char *s2);
+extern int strncasecmp(const char *s1, const char *s2, size_t n);
 
 #endif // !MUDUO_WIN_TYPES_H

@@ -82,11 +82,7 @@ using namespace muduo::detail;
 
 pid_t ProcessInfo::pid()
 {
-#if defined(NATIVE_WIN32)
-  return win_get_process_id();
-#else
   return ::getpid();
-#endif
 }
 
 string ProcessInfo::pidString()

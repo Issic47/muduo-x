@@ -19,6 +19,7 @@ class ThreadLocal : boost::noncopyable
  public:
   ThreadLocal()
   {
+    // FIXME(cbj): call destructor when thread exit
     MCHECK(uv_key_create(&pkey_));
   }
 
@@ -34,7 +35,7 @@ class ThreadLocal : boost::noncopyable
     if (!perThreadValue)
     {
       T* newObj = new T();
-      MCHECK(uv_key_set(&pkey_, newObj));
+      uv_key_set(&pkey_, newObj);
       perThreadValue = newObj;
     }
     return *perThreadValue;

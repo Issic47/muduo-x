@@ -60,6 +60,12 @@
     <ClCompile Include="muduo\win32\WinFunc.cpp">
       <Filter>win32</Filter>
     </ClCompile>
+    <ClCompile Include="muduo\win32\strncasecmp.cpp">
+      <Filter>win32</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\win32\strptime.cpp">
+      <Filter>win32</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="muduo\base\AsyncLogging.h">

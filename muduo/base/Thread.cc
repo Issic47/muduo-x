@@ -26,6 +26,7 @@
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <linux/unistd.h>
+#include <pthread.h>
 #endif
 
 namespace muduo
@@ -167,7 +168,7 @@ bool CurrentThread::isMainThread()
 
 void CurrentThread::sleepUsec(int64_t usec)
 {
-  std::this_thread::sleep_for(std::chrono::milliseconds(usec));
+  std::this_thread::sleep_for(std::chrono::microseconds(usec));
 }
 
 AtomicInt32 Thread::numCreated_;
@@ -197,7 +198,13 @@ Thread::Thread(ThreadFunc&& func, const string& n)
 Thread::~Thread()
 {
   if (started_ && !joined_) {
-    LOG_DEBUG << name_ << " isn't joined!";
+    // hack
+#ifdef NATIVE_WIN32
+    CloseHandle(pthreadId_);
+#else
+    pthread_detach(pthreadId_);
+#endif // NATIVE_WIN32
+
   }
 }
 

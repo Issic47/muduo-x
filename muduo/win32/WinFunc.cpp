@@ -73,7 +73,7 @@ static int ListProcessThreads( DWORD dwOwnerPID, std::vector<pid_t> *t_pids )
   } while( ::Thread32Next(hThreadSnap, &te32 ) ); 
 
   ::CloseHandle( hThreadSnap );
-  return -1;
+  return 0;
 }
 
 int win_get_thread_num()

@@ -105,7 +105,7 @@ size_t FileUtil::AppendFile::write(const char* logline, size_t len)
 }
 
 FileUtil::ReadSmallFile::ReadSmallFile(StringArg filename)
-  : fd_(0), err_(0)
+  : fd_(-1), err_(0)
 {
   buf_[0] = '\0';
 
@@ -141,7 +141,8 @@ int FileUtil::ReadSmallFile::readToString(int maxSize,
                                           int64_t* modifyTime,
                                           int64_t* createTime)
 {
-  BOOST_STATIC_ASSERT(sizeof(off_t) == 8);
+  // FIXME(cbj):
+  //BOOST_STATIC_ASSERT(sizeof(off_t) == 8);
   assert(content != NULL);
   int err = err_;
   if (fd_ >= 0)
@@ -236,13 +237,13 @@ int FileUtil::ReadSmallFile::readToBuffer(int* size)
   return err;
 }
 
-template<> 
+template 
 int FileUtil::readFile(StringArg filename,
                                 int maxSize,
                                 string* content,
                                 int64_t*, int64_t*, int64_t*);
 
-template<>
+template
 int FileUtil::ReadSmallFile::readToString(
     int maxSize,
     string* content,
