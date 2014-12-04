@@ -52,6 +52,7 @@ class MutexLock : boost::noncopyable
 {
  public:
   MutexLock()
+    : holder_(0)
   {
     //MCHECK(pthread_mutex_init(&mutex_, NULL));
     MCHECK(uv_mutex_init(&mutex_));
