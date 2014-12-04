@@ -12,7 +12,8 @@
 #define MUDUO_NET_ENDIAN_H
 
 #include <stdint.h>
-#include <endian.h>
+#include <muduo/base/endianness.h>
+//#include <endian.h>
 
 namespace muduo
 {
