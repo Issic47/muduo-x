@@ -33,6 +33,12 @@ class ThreadLocalSingleton : boost::noncopyable
     return t_value_;
   }
 
+  // WARNING: need to call destroy before the thread exit
+  static void destroy() 
+  {
+    destructor(t_value_);
+  }
+
  private:
   ThreadLocalSingleton();
   ~ThreadLocalSingleton();
