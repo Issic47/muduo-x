@@ -27,6 +27,14 @@
 #endif
 #endif
 
+#ifndef htobe16
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define htobe16(x) (x)
+#else
+#define htobe16 be16toh
+#endif
+#endif
+
 #ifndef __bswap_32
 #define __bswap_32(x) ((((x) & 0xFF000000) >> 24) \
                     | (((x) & 0x00FF0000) >> 8) \
