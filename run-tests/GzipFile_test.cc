@@ -46,7 +46,7 @@ int main()
 
   {
   muduo::GzipFile writer = muduo::GzipFile::openForWriteExclusive(filename);
-  // TODO(cbj): errno == 0
+  // NOTE: must use the same mode(DEBUG/RELEASE) zlib1.dll.
   if (writer.valid() || errno != EEXIST)
   {
     printf("FAILED\n");

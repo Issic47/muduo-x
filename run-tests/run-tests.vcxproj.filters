@@ -20,9 +20,6 @@
     <ClCompile Include="TimeZone_unittest.cc">
       <Filter>failtest</Filter>
     </ClCompile>
-    <ClCompile Include="GzipFile_test.cc">
-      <Filter>failtest</Filter>
-    </ClCompile>
     <ClCompile Include="Fork_test.cc">
       <Filter>failtest</Filter>
     </ClCompile>
@@ -85,6 +82,18 @@
     </ClCompile>
     <ClCompile Include="LogStream_bench.cc">
       <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="GzipFile_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="BoundedBlockingQueue_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="Logging_test.cc">
+      <Filter>passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="ThreadLocalSingleton_test.cc">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

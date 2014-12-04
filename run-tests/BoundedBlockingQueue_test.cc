@@ -35,7 +35,7 @@ class Test
       char buf[32];
       snprintf(buf, sizeof buf, "hello %d", i);
       queue_.put(buf);
-      printf("tid=%d, put data = %s, size = %zd\n", muduo::CurrentThread::tid(), buf, queue_.size());
+      printf("tid=%d, put data = %s, size = " SSIZET_FMT "\n", muduo::CurrentThread::tid(), buf, queue_.size());
     }
   }
 
@@ -62,7 +62,7 @@ class Test
     while (running)
     {
       std::string d(queue_.take());
-      printf("tid=%d, get data = %s, size = %zd\n", muduo::CurrentThread::tid(), d.c_str(), queue_.size());
+      printf("tid=%d, get data = %s, size = " SSIZET_FMT "\n", muduo::CurrentThread::tid(), d.c_str(), queue_.size());
       running = (d != "stop");
     }
 

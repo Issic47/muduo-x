@@ -3,7 +3,15 @@
 #include <muduo/base/ThreadPool.h>
 #include <muduo/base/TimeZone.h>
 
+#include <thread>
+
 #include <stdio.h>
+
+#ifdef NATIVE_WIN32
+#define setbuffer(file, buf, size) \
+          setvbuf((file), (buf), _IOFBF, (size))
+#endif // !NATIVE_WIN32
+
 
 int g_total;
 FILE* g_file;
@@ -48,12 +56,13 @@ void bench(const char* type)
 void logInThread()
 {
   LOG_INFO << "logInThread";
-  usleep(1000);
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  //usleep(1000);
 }
 
 int main()
 {
-  getppid(); // for ltrace and strace
+  //getppid(); // for ltrace and strace
 
   muduo::ThreadPool pool("pool");
   pool.start(5);
@@ -63,6 +72,7 @@ int main()
   pool.run(logInThread);
   pool.run(logInThread);
 
+  muduo::Logger::setLogLevel(muduo::Logger::kTRACE);
   LOG_TRACE << "trace";
   LOG_DEBUG << "debug";
   LOG_INFO << "Hello";
@@ -73,19 +83,21 @@ int main()
   LOG_INFO << sizeof(muduo::Fmt);
   LOG_INFO << sizeof(muduo::LogStream::Buffer);
 
-  sleep(1);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  //sleep(1);
   bench("nop");
 
   char buffer[64*1024];
 
-  g_file = fopen("/dev/null", "w");
-  setbuffer(g_file, buffer, sizeof buffer);
-  bench("/dev/null");
-  fclose(g_file);
+  //g_file = fopen("/dev/null", "w");
+  //setbuffer(g_file, buffer, sizeof buffer);
+  //bench("/dev/null");
+  //fclose(g_file);
 
-  g_file = fopen("/tmp/log", "w");
+  g_file = fopen("./log", "w");
   setbuffer(g_file, buffer, sizeof buffer);
-  bench("/tmp/log");
+
+  bench("./log");
   fclose(g_file);
 
   g_file = NULL;
@@ -98,7 +110,8 @@ int main()
 
   {
   g_file = stdout;
-  sleep(1);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  //sleep(1);
   muduo::TimeZone beijing(8*3600, "CST");
   muduo::Logger::setTimeZone(beijing);
   LOG_TRACE << "trace CST";
@@ -107,14 +120,15 @@ int main()
   LOG_WARN << "World CST";
   LOG_ERROR << "Error CST";
 
-  sleep(1);
-  muduo::TimeZone newyork("/usr/share/zoneinfo/America/New_York");
-  muduo::Logger::setTimeZone(newyork);
-  LOG_TRACE << "trace NYT";
-  LOG_DEBUG << "debug NYT";
-  LOG_INFO << "Hello NYT";
-  LOG_WARN << "World NYT";
-  LOG_ERROR << "Error NYT";
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  //sleep(1);
+  //muduo::TimeZone newyork("/usr/share/zoneinfo/America/New_York");
+  //muduo::Logger::setTimeZone(newyork);
+  //LOG_TRACE << "trace NYT";
+  //LOG_DEBUG << "debug NYT";
+  //LOG_INFO << "Hello NYT";
+  //LOG_WARN << "World NYT";
+  //LOG_ERROR << "Error NYT";
   g_file = NULL;
   }
   bench("timezone nop");
