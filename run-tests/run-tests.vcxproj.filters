@@ -93,7 +93,7 @@
       <Filter>passtest</Filter>
     </ClCompile>
     <ClCompile Include="ThreadLocalSingleton_test.cc">
-      <Filter>src</Filter>
+      <Filter>failtest</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
