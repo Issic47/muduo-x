@@ -25,7 +25,7 @@ using namespace muduo::net;
 
 namespace
 {
-__thread EventLoop* t_loopInThisThread = 0;
+thread_local EventLoop* t_loopInThisThread = 0;
 
 const int kPollTimeMs = 10000;
 
@@ -83,6 +83,41 @@ EventLoop::EventLoop()
   {
     t_loopInThisThread = this;
   }
+
+  int err = 0;
+  do 
+  {
+    err = uv_loop_init(&loop_);
+    if (err) break;
+
+    // initialize prepare handle
+    err = uv_prepare_init(&loop_, &prepare_handle_);
+    if (err) break;
+    prepare_handle_.data = this;
+    err = uv_prepare_start(&prepare_handle_, &EventLoop::loopPrepareCallback);
+    if (err) break;
+
+    // initialize check handle
+    err = uv_check_init(&loop_, &check_handle_);
+    if (err) break;
+    check_handle_.data = this;
+    err = uv_check_start(&check_handle_, &EventLoop::loopCheckCallback);
+    if (err) break;
+
+    // initialize async handle
+    err = uv_async_init(&loop_, &async_handle_, &EventLoop::loopAsyncCallback);
+    if (err) break;
+    async_handle_.data = this;
+
+  } while (false);
+  
+  if (err) 
+  {
+    LOG_FATAL << "Event Loop init failed with error: " << uv_strerror(err) 
+              << " in thread " << threadId_;
+  }
+  
+
   wakeupChannel_->setReadCallback(
       boost::bind(&EventLoop::handleRead, this));
   // we are always reading the wakeupfd
@@ -93,10 +128,66 @@ EventLoop::~EventLoop()
 {
   LOG_DEBUG << "EventLoop " << this << " of thread " << threadId_
             << " destructs in thread " << CurrentThread::tid();
-  wakeupChannel_->disableAll();
-  wakeupChannel_->remove();
-  ::close(wakeupFd_);
+
+  uv_walk(&loop_, &EventLoop::closeWalkCallback, NULL);
+  uv_run(&loop_, UV_RUN_DEFAULT);
+
+  int err = uv_loop_close(&loop_);
+  if (err) 
+  {
+    LOG_ERROR << "EventLoop " << this << " should be stopped before destruct";
+  }
+
   t_loopInThisThread = NULL;
+}
+
+void muduo::net::EventLoop::loopPrepareCallback( uv_prepare_t *handle )
+{
+  assert(handle->data);
+  EventLoop *loop = static_cast<EventLoop*>(handle->data);
+  ++loop->iteration_;
+}
+
+void muduo::net::EventLoop::loopCheckCallback( uv_check_t *handle )
+{
+  assert(handle->data);
+  EventLoop *loop = static_cast<EventLoop*>(handle->data);
+  loop->doPendingFunctors();
+}
+
+void muduo::net::EventLoop::loopAsyncCallback( uv_async_t *handle )
+{
+  assert(handle->data);
+  EventLoop *loop = static_cast<EventLoop*>(handle->data);
+  LOG_TRACE << "EventLoop " << loop << " is wakeup";
+}
+
+void muduo::net::EventLoop::loopTimeoutCallback( uv_timer_t &handle )
+{
+
+}
+
+void muduo::net::EventLoop::closeWalkCallback(uv_handle_t *handle, void *arg)
+{
+  if (!uv_is_closing(handle))
+    uv_close(handle, NULL);
+}
+
+void EventLoop::doPendingFunctors()
+{
+  std::vector<Functor> functors;
+  callingPendingFunctors_ = true;
+
+  {
+    MutexLockGuard lock(mutex_);
+    functors.swap(pendingFunctors_);
+  }
+
+  for (size_t i = 0; i < functors.size(); ++i)
+  {
+    functors[i]();
+  }
+  callingPendingFunctors_ = false;
 }
 
 void EventLoop::loop()
@@ -107,27 +198,29 @@ void EventLoop::loop()
   quit_ = false;  // FIXME: what if someone calls quit() before loop() ?
   LOG_TRACE << "EventLoop " << this << " start looping";
 
-  while (!quit_)
-  {
-    activeChannels_.clear();
-    pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
-    ++iteration_;
-    if (Logger::logLevel() <= Logger::TRACE)
-    {
-      printActiveChannels();
-    }
-    // TODO sort channel by priority
-    eventHandling_ = true;
-    for (ChannelList::iterator it = activeChannels_.begin();
-        it != activeChannels_.end(); ++it)
-    {
-      currentActiveChannel_ = *it;
-      currentActiveChannel_->handleEvent(pollReturnTime_);
-    }
-    currentActiveChannel_ = NULL;
-    eventHandling_ = false;
-    doPendingFunctors();
-  }
+  uv_run(&loop_, UV_RUN_DEFAULT);
+
+  //while (!quit_)
+  //{
+  //  activeChannels_.clear();
+  //  pollReturnTime_ = poller_->poll(kPollTimeMs, &activeChannels_);
+  //  ++iteration_;
+  //  if (Logger::logLevel() <= Logger::TRACE)
+  //  {
+  //    printActiveChannels();
+  //  }
+  //  // TODO sort channel by priority
+  //  eventHandling_ = true;
+  //  for (ChannelList::iterator it = activeChannels_.begin();
+  //      it != activeChannels_.end(); ++it)
+  //  {
+  //    currentActiveChannel_ = *it;
+  //    currentActiveChannel_->handleEvent(pollReturnTime_);
+  //  }
+  //  currentActiveChannel_ = NULL;
+  //  eventHandling_ = false;
+  //  doPendingFunctors();
+  //}
 
   LOG_TRACE << "EventLoop " << this << " stop looping";
   looping_ = false;
@@ -139,6 +232,7 @@ void EventLoop::quit()
   // There is a chance that loop() just executes while(!quit_) and exists,
   // then EventLoop destructs, then we are accessing an invalid object.
   // Can be fixed using mutex_ in both places.
+  uv_stop(&loop_);
   if (!isInLoopThread())
   {
     wakeup();
@@ -187,7 +281,6 @@ TimerId EventLoop::runEvery(double interval, const TimerCallback& cb)
   return timerQueue_->addTimer(cb, time, interval);
 }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
 // FIXME: remove duplication
 void EventLoop::runInLoop(Functor&& cb)
 {
@@ -230,7 +323,6 @@ TimerId EventLoop::runEvery(double interval, TimerCallback&& cb)
   Timestamp time(addTime(Timestamp::now(), interval));
   return timerQueue_->addTimer(std::move(cb), time, interval);
 }
-#endif
 
 void EventLoop::cancel(TimerId timerId)
 {
@@ -272,39 +364,12 @@ void EventLoop::abortNotInLoopThread()
 
 void EventLoop::wakeup()
 {
-  uint64_t one = 1;
-  ssize_t n = sockets::write(wakeupFd_, &one, sizeof one);
-  if (n != sizeof one)
+  int err = uv_async_send(&async_handle_);
+  if (err) 
   {
-    LOG_ERROR << "EventLoop::wakeup() writes " << n << " bytes instead of 8";
+    LOG_ERROR << "A error occured when call uv_sync_send in EventLoop::wakeup():" 
+              << uv_strerror(err);
   }
-}
-
-void EventLoop::handleRead()
-{
-  uint64_t one = 1;
-  ssize_t n = sockets::read(wakeupFd_, &one, sizeof one);
-  if (n != sizeof one)
-  {
-    LOG_ERROR << "EventLoop::handleRead() reads " << n << " bytes instead of 8";
-  }
-}
-
-void EventLoop::doPendingFunctors()
-{
-  std::vector<Functor> functors;
-  callingPendingFunctors_ = true;
-
-  {
-  MutexLockGuard lock(mutex_);
-  functors.swap(pendingFunctors_);
-  }
-
-  for (size_t i = 0; i < functors.size(); ++i)
-  {
-    functors[i]();
-  }
-  callingPendingFunctors_ = false;
 }
 
 void EventLoop::printActiveChannels() const

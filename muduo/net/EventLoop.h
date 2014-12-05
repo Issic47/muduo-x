@@ -24,6 +24,8 @@
 #include <muduo/net/Callbacks.h>
 #include <muduo/net/TimerId.h>
 
+#include <uv.h>
+
 namespace muduo
 {
 namespace net
@@ -70,15 +72,13 @@ class EventLoop : boost::noncopyable
   /// If in the same loop thread, cb is run within the function.
   /// Safe to call from other threads.
   void runInLoop(const Functor& cb);
+  void runInLoop(Functor&& cb);
+
   /// Queues callback in the loop thread.
   /// Runs after finish pooling.
   /// Safe to call from other threads.
   void queueInLoop(const Functor& cb);
-
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  void runInLoop(Functor&& cb);
   void queueInLoop(Functor&& cb);
-#endif
 
   // timers
 
@@ -139,8 +139,13 @@ class EventLoop : boost::noncopyable
   static EventLoop* getEventLoopOfCurrentThread();
 
  private:
+  static void loopPrepareCallback(uv_prepare_t *handle);
+  static void loopCheckCallback(uv_check_t *handle);
+  static void loopAsyncCallback(uv_async_t *handle);
+  static void loopTimeoutCallback(uv_timer_t &handle);
+  static void closeWalkCallback(uv_handle_t *handle, void *arg);
+
   void abortNotInLoopThread();
-  void handleRead();  // waked up
   void doPendingFunctors();
 
   void printActiveChannels() const; // DEBUG
@@ -151,23 +156,27 @@ class EventLoop : boost::noncopyable
   bool quit_; /* atomic and shared between threads, okay on x86, I guess. */
   bool eventHandling_; /* atomic */
   bool callingPendingFunctors_; /* atomic */
+  uv_loop_t loop_;
+
+  uv_prepare_t prepare_handle_; // use for doing iteration count
   int64_t iteration_;
+
+  uv_check_t check_handle_; // use for doing pending functors
+  MutexLock mutex_;
+  std::vector<Functor> pendingFunctors_; // @GuardedBy mutex_
+
+  uv_async_t async_handle_; // for wakeup the loop
+  
   const pid_t threadId_;
   Timestamp pollReturnTime_;
   boost::scoped_ptr<Poller> poller_;
   boost::scoped_ptr<TimerQueue> timerQueue_;
-  int wakeupFd_;
-  // unlike in TimerQueue, which is an internal class,
-  // we don't expose Channel to client.
-  boost::scoped_ptr<Channel> wakeupChannel_;
+
   boost::any context_;
 
   // scratch variables
   ChannelList activeChannels_;
   Channel* currentActiveChannel_;
-
-  MutexLock mutex_;
-  std::vector<Functor> pendingFunctors_; // @GuardedBy mutex_
 };
 
 }
