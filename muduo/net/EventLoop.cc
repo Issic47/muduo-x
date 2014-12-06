@@ -307,6 +307,7 @@ void EventLoop::queueInLoop(Functor&& cb)
   }
 }
 
+#ifdef __GXX_EXPERIMENTAL_CXX0X__
 TimerId EventLoop::runAt(const Timestamp& time, TimerCallback&& cb)
 {
   return timerQueue_->addTimer(std::move(cb), time, 0.0);
@@ -323,6 +324,7 @@ TimerId EventLoop::runEvery(double interval, TimerCallback&& cb)
   Timestamp time(addTime(Timestamp::now(), interval));
   return timerQueue_->addTimer(std::move(cb), time, interval);
 }
+#endif // __GXX_EXPERIMENTAL_CXX0X__
 
 void EventLoop::cancel(TimerId timerId)
 {

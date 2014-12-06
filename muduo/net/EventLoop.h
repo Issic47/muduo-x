@@ -109,6 +109,8 @@ class EventLoop : boost::noncopyable
   TimerId runEvery(double interval, TimerCallback&& cb);
 #endif
 
+  uv_loop_t *getUVLoop() { return &loop_; }
+
   // internal usage
   void wakeup();
   void updateChannel(Channel* channel);

@@ -81,9 +81,14 @@ void resetTimerfd(int timerfd, Timestamp expiration)
   }
 }
 
+inline uint64_t convertToMillisecond(double seconds)
+{
+  return seconds * 1000;
 }
-}
-}
+
+} // !namespace detail
+} // !namespace net
+} // !namespace muduo
 
 using namespace muduo;
 using namespace muduo::net;
@@ -146,32 +151,79 @@ void TimerQueue::cancel(TimerId timerId)
 void TimerQueue::addTimerInLoop(Timer* timer)
 {
   loop_->assertInLoopThread();
-  bool earliestChanged = insert(timer);
-
-  if (earliestChanged)
+  double delay = timeDifference(timer->expiration(), Timestamp::now());
+  if (delay < 0) {
+    LOG_WARN << "Timer's expiration is "  << -delay << "s earlier than now";
+    delay = 0.0;  // need to set it to 0.0
+  }
+  
+  int err = 0;
+  do 
   {
-    resetTimerfd(timerfd_, timer->expiration());
+    // TODO(cbj): make timer only init once.
+    err = uv_timer_init(loop_->getUVLoop(), timer->getUVTimer());
+    if (err) break;
+    // Not need to unref the timer
+    //uv_unref(reinterpret_cast<uv_handle_t*>(timer->getUVTimer()));
+
+    timer->getUVTimer()->data = timer;
+    err = uv_timer_start(timer->getUVTimer(), 
+      &TimerQueue::timeroutCallback, 
+      convertToMillisecond(delay), 
+      timer->repeat() ? convertToMillisecond(timer->interval()) : 0);
+    if (err) break;
+
+  } while (false);
+  
+  if (err) 
+  {
+    LOG_ERROR << "TimerQueue::addTimerInLoop: " << uv_strerror(err);
+  }
+}
+
+void TimerQueue::timeroutCallback( uv_timer_t *handle )
+{
+  assert(handle->data);
+  Timer *timer = static_cast<Timer*>(handle->data);
+  timer->run();
+  if (!timer->repeat()) {
+    uv_timer_stop(handle);
+    uv_close(reinterpret_cast<uv_handle_t*>(handle), NULL);
+    delete timer; // TODO: use free list
   }
 }
 
 void TimerQueue::cancelInLoop(TimerId timerId)
 {
   loop_->assertInLoopThread();
-  assert(timers_.size() == activeTimers_.size());
-  ActiveTimer timer(timerId.timer_, timerId.sequence_);
-  ActiveTimerSet::iterator it = activeTimers_.find(timer);
-  if (it != activeTimers_.end())
+  assert(timerId.timer_);
+
+  uv_timer_t *timer = timerId.timer_->getUVTimer();
+  if (uv_is_active(reinterpret_cast<const uv_handle_t*>(timer))) 
   {
-    size_t n = timers_.erase(Entry(it->first->expiration(), it->first));
-    assert(n == 1); (void)n;
-    delete it->first; // FIXME: no delete please
-    activeTimers_.erase(it);
-  }
-  else if (callingExpiredTimers_)
+    uv_timer_stop(timerId.timer_->getUVTimer());
+  } 
+  else 
   {
-    cancelingTimers_.insert(timer);
+    LOG_INFO << "timer(" << timerId.sequence_ << ") has already stopped before.";
   }
-  assert(timers_.size() == activeTimers_.size());
+  
+
+  //assert(timers_.size() == activeTimers_.size());
+  //ActiveTimer timer(timerId.timer_, timerId.sequence_);
+  //ActiveTimerSet::iterator it = activeTimers_.find(timer);
+  //if (it != activeTimers_.end())
+  //{
+  //  size_t n = timers_.erase(Entry(it->first->expiration(), it->first));
+  //  assert(n == 1); (void)n;
+  //  delete it->first; // FIXME: no delete please
+  //  activeTimers_.erase(it);
+  //}
+  //else if (callingExpiredTimers_)
+  //{
+  //  cancelingTimers_.insert(timer);
+  //}
+  //assert(timers_.size() == activeTimers_.size());
 }
 
 void TimerQueue::handleRead()

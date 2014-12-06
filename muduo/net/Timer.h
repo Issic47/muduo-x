@@ -32,7 +32,8 @@ class Timer : boost::noncopyable
       expiration_(when),
       interval_(interval),
       repeat_(interval > 0.0),
-      sequence_(s_numCreated_.incrementAndGet())
+      sequence_(s_numCreated_.incrementAndGet()),
+      init_(false)
   { }
 
 #ifdef __GXX_EXPERIMENTAL_CXX0X__
@@ -45,12 +46,20 @@ class Timer : boost::noncopyable
   { }
 #endif
 
+  void init(uv_loop_t *loop)
+  {
+
+  }
+
   void run() const
   {
     callback_();
   }
 
+  uv_timer_t *getUVTimer() { return &timer_; }
+
   Timestamp expiration() const  { return expiration_; }
+  double interval() const { return interval_; }
   bool repeat() const { return repeat_; }
   int64_t sequence() const { return sequence_; }
 
@@ -60,7 +69,9 @@ class Timer : boost::noncopyable
 
  private:
   const TimerCallback callback_;
+  uv_timer_t timer_;
   Timestamp expiration_;
+  bool init_;
   const double interval_;
   const bool repeat_;
   const int64_t sequence_;
