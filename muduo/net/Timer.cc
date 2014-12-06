@@ -7,9 +7,27 @@
 // Author: Shuo Chen (chenshuo at chenshuo dot com)
 
 #include <muduo/net/Timer.h>
+#include <muduo/base/Logging.h>
+
+namespace muduo
+{
+namespace net
+{
+namespace detail
+{
+
+inline uint64_t convertToMillisecond(double seconds)
+{
+  return seconds * 1000;
+}
+
+} // !namespace detail
+} // !namespace net
+} // !namespace muduo
 
 using namespace muduo;
 using namespace muduo::net;
+using namespace muduo::net::detail;
 
 AtomicInt64 Timer::s_numCreated_;
 
@@ -23,4 +41,19 @@ void Timer::restart(Timestamp now)
   {
     expiration_ = Timestamp::invalid();
   }
+}
+
+int muduo::net::Timer::start()
+{
+  assert(init_);
+  double delay = timeDifference(expiration_, Timestamp::now());
+  if (delay < 0) 
+  {
+    LOG_WARN << "Timer's expiration is "  << -delay << "s earlier than now";
+    delay = 0.0;  // need to set it to 0.0
+  }
+  int err = uv_timer_start(
+    &timer_, &Timer::uvTimeoutCallback, convertToMillisecond(delay), 
+    repeat_ ? convertToMillisecond(interval_) : 0);
+  return err;
 }

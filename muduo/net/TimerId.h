@@ -12,6 +12,8 @@
 #define MUDUO_NET_TIMERID_H
 
 #include <muduo/base/copyable.h>
+#include <boost/make_shared.hpp>
+#include <boost/weak_ptr.hpp>
 
 namespace muduo
 {
@@ -26,13 +28,16 @@ class Timer;
 class TimerId : public muduo::copyable
 {
  public:
+  typedef boost::shared_ptr<Timer> TimerPtr;
+  typedef boost::weak_ptr<Timer> WeakTimerPtr;
+
   TimerId()
-    : timer_(NULL),
+    : timer_(),
       sequence_(0)
   {
   }
 
-  TimerId(Timer* timer, int64_t seq)
+  TimerId(const TimerPtr &timer, int64_t seq)
     : timer_(timer),
       sequence_(seq)
   {
@@ -43,7 +48,7 @@ class TimerId : public muduo::copyable
   friend class TimerQueue;
 
  private:
-  Timer* timer_;
+  WeakTimerPtr timer_;
   int64_t sequence_;
 };
 

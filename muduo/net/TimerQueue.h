@@ -11,15 +11,13 @@
 #ifndef MUDUO_NET_TIMERQUEUE_H
 #define MUDUO_NET_TIMERQUEUE_H
 
-#include <set>
-#include <vector>
+#include <list>
 
 #include <boost/noncopyable.hpp>
 
 #include <muduo/base/Mutex.h>
 #include <muduo/base/Timestamp.h>
 #include <muduo/net/Callbacks.h>
-#include <muduo/net/Channel.h>
 
 namespace muduo
 {
@@ -48,42 +46,26 @@ class TimerQueue : boost::noncopyable
   TimerId addTimer(const TimerCallback& cb,
                    Timestamp when,
                    double interval);
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
+
   TimerId addTimer(TimerCallback&& cb,
                    Timestamp when,
                    double interval);
-#endif
 
   void cancel(TimerId timerId);
 
  private:
-
   // FIXME: use unique_ptr<Timer> instead of raw pointers.
-  typedef std::pair<Timestamp, Timer*> Entry;
-  typedef std::set<Entry> TimerList;
-  typedef std::pair<Timer*, int64_t> ActiveTimer;
-  typedef std::set<ActiveTimer> ActiveTimerSet;
+  typedef std::list<TimerPtr> TimerList;
 
-  void addTimerInLoop(Timer* timer);
+  void afterTimeoutCallback(TimerPtr timer);
+
+  void addTimerInLoop(TimerPtr timer);
   void cancelInLoop(TimerId timerId);
-  // called when timerfd alarms
-  void handleRead();
-  // move out all expired timers
-  std::vector<Entry> getExpired(Timestamp now);
-  void reset(const std::vector<Entry>& expired, Timestamp now);
 
-  bool insert(Timer* timer);
-
+ private:
   EventLoop* loop_;
-  const int timerfd_;
-  Channel timerfdChannel_;
-  // Timer list sorted by expiration
-  TimerList timers_;
-
-  // for cancel()
-  ActiveTimerSet activeTimers_;
-  bool callingExpiredTimers_; /* atomic */
-  ActiveTimerSet cancelingTimers_;
+  TimerList allocTimers_;
+  TimerList freeTimers_;
 };
 
 }

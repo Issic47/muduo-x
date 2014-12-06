@@ -12,6 +12,7 @@
 #define MUDUO_NET_TIMER_H
 
 #include <boost/noncopyable.hpp>
+#include <boost/enable_shared_from_this.hpp>
 
 #include <muduo/base/Atomic.h>
 #include <muduo/base/Timestamp.h>
@@ -24,42 +25,62 @@ namespace net
 ///
 /// Internal class for timer event.
 ///
-class Timer : boost::noncopyable
+class Timer : public boost::enable_shared_from_this<Timer>, boost::noncopyable
 {
  public:
-  Timer(const TimerCallback& cb, Timestamp when, double interval)
+  Timer(const TimerCallback& cb, 
+        Timestamp when, 
+        double interval,
+        const AfterTimeoutCallback& afterTimeoutCallback)
     : callback_(cb),
       expiration_(when),
       interval_(interval),
       repeat_(interval > 0.0),
       sequence_(s_numCreated_.incrementAndGet()),
+      afterTimeoutCallback_(afterTimeoutCallback),
       init_(false)
   { }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
-  Timer(TimerCallback&& cb, Timestamp when, double interval)
+  Timer(TimerCallback&& cb, Timestamp when, double interval,
+        AfterTimeoutCallback &&afterTimeoutCallback)
     : callback_(std::move(cb)),
       expiration_(when),
       interval_(interval),
       repeat_(interval > 0.0),
-      sequence_(s_numCreated_.incrementAndGet())
+      sequence_(s_numCreated_.incrementAndGet()),
+      afterTimeoutCallback_(std::move(afterTimeoutCallback)),
+      init_(false)
   { }
-#endif
 
-  void init(uv_loop_t *loop)
+  ~Timer() 
   {
-
+    if (init_) 
+    {
+      // FIXME(cbj): need to stop the timer first?
+      uv_timer_stop(&timer_);
+      uv_close(reinterpret_cast<uv_handle_t*>(&timer_), NULL);
+      init_ = false;
+    }
   }
 
-  void run() const
+  int init(uv_loop_t *loop)
   {
-    callback_();
+    int err = 0;
+    if (!init_) {
+      err = uv_timer_init(loop, &timer_);
+      // Not need to unref the timer
+      //uv_unref(reinterpret_cast<uv_handle_t*>(timer->getUVTimer()));
+      init_ = err == 0;
+      timer_.data = this;
+    }
+    return err;
   }
 
-  uv_timer_t *getUVTimer() { return &timer_; }
+  int start();
+
+  int stop() { assert(init_); return uv_timer_stop(&timer_); }
 
   Timestamp expiration() const  { return expiration_; }
-  double interval() const { return interval_; }
   bool repeat() const { return repeat_; }
   int64_t sequence() const { return sequence_; }
 
@@ -68,7 +89,17 @@ class Timer : boost::noncopyable
   static int64_t numCreated() { return s_numCreated_.get(); }
 
  private:
+  static void uvTimeoutCallback(uv_timer_t *handle) 
+  {
+    assert(handle->data);
+    Timer *timer = static_cast<Timer*>(handle->data);
+    timer->callback_();
+    timer->afterTimeoutCallback_(timer->shared_from_this());
+  }
+
+ private:
   const TimerCallback callback_;
+  const AfterTimeoutCallback afterTimeoutCallback_;
   uv_timer_t timer_;
   Timestamp expiration_;
   bool init_;

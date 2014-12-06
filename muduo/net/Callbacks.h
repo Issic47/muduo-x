@@ -42,8 +42,11 @@ namespace net
 
 class Buffer;
 class TcpConnection;
+class Timer;
 typedef boost::shared_ptr<TcpConnection> TcpConnectionPtr;
+typedef boost::shared_ptr<Timer> TimerPtr;
 typedef boost::function<void()> TimerCallback;
+typedef boost::function<void (TimerPtr)> AfterTimeoutCallback; // for internal use
 typedef boost::function<void (const TcpConnectionPtr&)> ConnectionCallback;
 typedef boost::function<void (const TcpConnectionPtr&)> CloseCallback;
 typedef boost::function<void (const TcpConnectionPtr&)> WriteCompleteCallback;
