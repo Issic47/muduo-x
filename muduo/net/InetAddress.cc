@@ -12,17 +12,13 @@
 #include <muduo/net/Endian.h>
 #include <muduo/net/SocketsOps.h>
 
+#ifndef NATIVE_WIN32
 #include <netdb.h>
 #include <strings.h>  // bzero
 #include <netinet/in.h>
+#endif // !NATIVE_WIN32
 
 #include <boost/static_assert.hpp>
-
-// INADDR_ANY use (type)value casting.
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-static const in_addr_t kInaddrAny = INADDR_ANY;
-static const in_addr_t kInaddrLoopback = INADDR_LOOPBACK;
-#pragma GCC diagnostic error "-Wold-style-cast"
 
 //     /* Structure describing an Internet socket address.  */
 //     struct sockaddr_in {
@@ -40,65 +36,167 @@ static const in_addr_t kInaddrLoopback = INADDR_LOOPBACK;
 using namespace muduo;
 using namespace muduo::net;
 
-BOOST_STATIC_ASSERT(sizeof(InetAddress) == sizeof(struct sockaddr_in));
-
-InetAddress::InetAddress(uint16_t port, bool loopbackOnly)
+muduo::net::InetAddress::InetAddress( int af /*= AF_NET*/, uint16_t port /*= 0*/, bool loopbackOnly /*= false*/ )
 {
   bzero(&addr_, sizeof addr_);
-  addr_.sin_family = AF_INET;
-  in_addr_t ip = loopbackOnly ? kInaddrLoopback : kInaddrAny;
-  addr_.sin_addr.s_addr = sockets::hostToNetwork32(ip);
-  addr_.sin_port = sockets::hostToNetwork16(port);
+  switch (af)
+  {
+  case AF_INET:
+    addr_.u.in.sin_family = af;
+    addr_.u.in.sin_port = htons(port);
+    addr_.u.in.sin_addr.s_addr = 
+      loopbackOnly ? htonl(INADDR_LOOPBACK) : htonl(INADDR_ANY);
+    addr_.len = sizeof(addr_.u.in);
+    break;
+
+  case AF_INET6:
+    addr_.u.in6.sin6_family = af;
+    addr_.u.in6.sin6_port = htons(port);
+    if (loopbackOnly) 
+    {
+      IN6_SET_ADDR_LOOPBACK(&addr_.u.in6.sin6_addr);
+    }
+    else
+    {
+      IN6_SET_ADDR_UNSPECIFIED(&addr_.u.in6.sin6_addr);
+    }
+    addr_.len = sizeof(addr_.u.in6);
+    break;
+
+  default:
+    LOG_SYSERR << "No support address family:" << af;
+    break;
+  }
+
 }
 
-InetAddress::InetAddress(StringArg ip, uint16_t port)
+InetAddress::InetAddress(int af, StringArg ip, uint16_t port)
 {
   bzero(&addr_, sizeof addr_);
-  sockets::fromIpPort(ip.c_str(), port, &addr_);
+  int err = 0;
+  switch (af)
+  {
+  case AF_INET:
+    err = uv_ip4_addr(ip.c_str(), port, &addr_.u.in);
+    addr_.len = sizeof(addr_.u.in);
+    break;
+
+  case AF_INET6:
+    err = uv_ip6_addr(ip.c_str(), port, &addr_.u.in6);
+    addr_.len = sizeof(addr_.u.in6);
+    break;
+
+  default:
+    err = UV_EAI_ADDRFAMILY;
+    break;
+  }
+  if (err)
+    LOG_SYSERR << uv_strerror(err) 
+              << "(" << af << "," << ip.c_str() << ":" << port << ")";
+}
+
+muduo::net::InetAddress::InetAddress( const struct sockaddr& addr )
+{
+  bzero(&addr_, sizeof addr_);
+  addr_.u.sa = addr; 
+  switch (addr.sa_family)
+  {
+  case AF_INET:
+    addr_.len = sizeof(addr_.u.in);
+    break;
+
+  case AF_INET6:
+    addr_.len = sizeof(addr_.u.in6);
+    break;
+
+  default:
+    LOG_SYSERR << "No support address family:" << addr.sa_family;
+    break;
+  }
 }
 
 string InetAddress::toIpPort() const
 {
-  char buf[32];
-  sockets::toIpPort(buf, sizeof buf, addr_);
+  char buf[INET6_ADDRSTRLEN];
+  int err = 0;
+  switch (addr_.u.sa.sa_family)
+  {
+  case AF_INET:
+    err = uv_ip4_name(&addr_.u.in, buf, sizeof buf);
+    break;
+
+  case AF_INET6:
+    err = uv_ip6_name(&addr_.u.in6, buf, sizeof buf);
+    break;
+
+  default:
+    err = UV_EAI_ADDRFAMILY;
+    break;
+  }
+  if (err) 
+  {
+    buf[0] = '\0';
+    LOG_SYSERR << uv_strerror(err);
+  }
+
   return buf;
 }
 
 string InetAddress::toIp() const
 {
-  char buf[32];
-  sockets::toIp(buf, sizeof buf, addr_);
+  char buf[INET6_ADDRSTRLEN];
+  int err = 0;
+  switch (addr_.u.sa.sa_family)
+  {
+  case AF_INET:
+    err = uv_inet_ntop(AF_INET, &addr_.u.in.sin_addr, buf, sizeof buf);
+    break;
+  case AF_INET6:
+    err = uv_inet_ntop(AF_INET6, &addr_.u.in6.sin6_addr, buf, sizeof buf);
+  default:
+    err = UV_EAI_ADDRFAMILY;
+    break;
+  }
+
+  if (err)
+  {
+    buf[0] = '\0';
+    LOG_SYSERR << uv_strerror(err);
+  }
+  
   return buf;
 }
 
 uint16_t InetAddress::toPort() const
 {
-  return sockets::networkToHost16(addr_.sin_port);
+  // NOTE: the offset of sin_port in sockaddr_in equals in sockadd_in6
+  return ntohs(addr_.u.in.sin_port);
 }
 
-static __thread char t_resolveBuffer[64 * 1024];
+//static thread_local char t_resolveBuffer[64 * 1024];
 
 bool InetAddress::resolve(StringArg hostname, InetAddress* out)
 {
-  assert(out != NULL);
-  struct hostent hent;
-  struct hostent* he = NULL;
-  int herrno = 0;
-  bzero(&hent, sizeof(hent));
+  //assert(out != NULL);
+  //struct hostent hent;
+  //struct hostent* he = NULL;
+  //int herrno = 0;
+  //bzero(&hent, sizeof(hent));
 
-  int ret = gethostbyname_r(hostname.c_str(), &hent, t_resolveBuffer, sizeof t_resolveBuffer, &he, &herrno);
-  if (ret == 0 && he != NULL)
-  {
-    assert(he->h_addrtype == AF_INET && he->h_length == sizeof(uint32_t));
-    out->addr_.sin_addr = *reinterpret_cast<struct in_addr*>(he->h_addr);
-    return true;
-  }
-  else
-  {
-    if (ret)
-    {
-      LOG_SYSERR << "InetAddress::resolve";
-    }
-    return false;
-  }
+  //int ret = gethostbyname_r(hostname.c_str(), &hent, t_resolveBuffer, sizeof t_resolveBuffer, &he, &herrno);
+  //if (ret == 0 && he != NULL)
+  //{
+  //  assert(he->h_addrtype == AF_INET && he->h_length == sizeof(uint32_t));
+  //  out->addr_.sin_addr = *reinterpret_cast<struct in_addr*>(he->h_addr);
+  //  return true;
+  //}
+  //else
+  //{
+  //  if (ret)
+  //  {
+  //    LOG_SYSERR << "InetAddress::resolve";
+  //  }
+  //  return false;
+  //}
+  return false;
 }

@@ -14,12 +14,26 @@
 #include <muduo/base/copyable.h>
 #include <muduo/base/StringPiece.h>
 
+#ifndef NATIVE_WIN32
 #include <netinet/in.h>
+#endif // !NATIVE_WIN32
+
 
 namespace muduo
 {
 namespace net
 {
+
+/** Defines a Socket Address */
+struct sa {
+  union {
+    struct sockaddr sa;
+    struct sockaddr_in in;
+    struct sockaddr_in6 in6;
+    uint8_t padding[28];
+  } u;
+  socklen_t len;
+};
 
 ///
 /// Wrapper of sockaddr_in.
@@ -30,29 +44,56 @@ class InetAddress : public muduo::copyable
  public:
   /// Constructs an endpoint with given port number.
   /// Mostly used in TcpServer listening.
-  explicit InetAddress(uint16_t port = 0, bool loopbackOnly = false);
+  explicit InetAddress(int af = AF_INET, uint16_t port = 0, bool loopbackOnly = false);
 
   /// Constructs an endpoint with given ip and port.
   /// @c ip should be "1.2.3.4"
-  InetAddress(StringArg ip, uint16_t port);
+  InetAddress(int af, StringArg ip, uint16_t port);
+
+  /// Constructs an endpoint with given struct @c sockaddr
+  /// Mostly used when accepting new connections
+  InetAddress(const struct sockaddr& addr);
 
   /// Constructs an endpoint with given struct @c sockaddr_in
   /// Mostly used when accepting new connections
-  InetAddress(const struct sockaddr_in& addr)
-    : addr_(addr)
-  { }
+  InetAddress(const struct sockaddr_in& addr) 
+  { 
+    addr_.u.in = addr; 
+    addr_.len = sizeof(addr);
+  }
+
+  /// Constructs an endpoint with given struct @c sockaddr_in6
+  /// Mostly used when accepting new connections
+  InetAddress(const struct sockaddr_in6& addr) 
+  { 
+    addr_.u.in6 = addr; 
+    addr_.len = sizeof(addr);
+  }
 
   string toIp() const;
   string toIpPort() const;
   uint16_t toPort() const;
 
   // default copy/assignment are Okay
+  const struct sockaddr& getSockAddr() const { return addr_.u.sa; }
 
-  const struct sockaddr_in& getSockAddrInet() const { return addr_; }
-  void setSockAddrInet(const struct sockaddr_in& addr) { addr_ = addr; }
+  const struct sockaddr_in& getSockAddrInet() const { return addr_.u.in; }
+  void setSockAddrInet(const struct sockaddr_in& addr) 
+  { 
+    addr_.u.in = addr; 
+    addr_.len = sizeof(addr);
+  }
 
-  uint32_t ipNetEndian() const { return addr_.sin_addr.s_addr; }
-  uint16_t portNetEndian() const { return addr_.sin_port; }
+  const struct sockaddr_in6& getSockAddrInet6() const { return addr_.u.in6; }
+  void setSockAddrInet6(const struct sockaddr_in6& addr) 
+  {
+    addr_.u.in6 = addr; 
+    addr_.len = sizeof(addr);
+  }
+
+  uint32_t ip4NetEndian() const { return addr_.u.in.sin_addr.s_addr; }
+  struct in6_addr ip6NetEndian() const { return addr_.u.in6.sin6_addr; }
+  uint16_t portNetEndian() const { return addr_.u.in.sin_port; }
 
   // resolve hostname to IP address, not changing port or sin_family
   // return true on success.
@@ -61,7 +102,7 @@ class InetAddress : public muduo::copyable
   // static std::vector<InetAddress> resolveAll(const char* hostname, uint16_t port = 0);
 
  private:
-  struct sockaddr_in addr_;
+   struct sa addr_;
 };
 
 }
