@@ -12,100 +12,179 @@
 #include <muduo/net/InetAddress.h>
 #include <muduo/net/SocketsOps.h>
 
+#ifndef NATIVE_WIN32
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <strings.h>  // bzero
 #include <stdio.h>  // snprintf
+#endif
 
 using namespace muduo;
 using namespace muduo::net;
 
+
+Socket::Socket( uv_tcp_t *socket ) 
+  : socket_(CHECK_NOTNULL(socket))
+{
+}
+
 Socket::~Socket()
 {
-  sockets::close(sockfd_);
+  if (socket_)
+  {
+    uv_close(reinterpret_cast<uv_handle_t*>(socket_), &Socket::closeCallback);
+  }
 }
+
+void Socket::closeCallback( uv_handle_t *handle )
+{
+  assert(uv_is_closing(handle));
+  delete handle;
+}
+
+uv_os_sock_t muduo::net::Socket::fd() const
+{
+  uv_os_fd_t fd;
+  int err = uv_fileno(
+    reinterpret_cast<const uv_handle_t*>(socket_), &fd);
+  if (err)
+    LOG_ERROR << uv_strerror(err);
+  return reinterpret_cast<uv_os_sock_t>(fd);
+}
+
 
 bool Socket::getTcpInfo(struct tcp_info* tcpi) const
 {
+#ifdef TCP_INFO
   socklen_t len = sizeof(*tcpi);
   bzero(tcpi, len);
-  return ::getsockopt(sockfd_, SOL_TCP, TCP_INFO, tcpi, &len) == 0;
+  return ::getsockopt(fd(), SOL_TCP, TCP_INFO, tcpi, &len) == 0;
+#else
+  return false;
+#endif
 }
 
 bool Socket::getTcpInfoString(char* buf, int len) const
 {
+#ifdef TCP_INFO
   struct tcp_info tcpi;
   bool ok = getTcpInfo(&tcpi);
   if (ok)
   {
     snprintf(buf, len, "unrecovered=%u "
-             "rto=%u ato=%u snd_mss=%u rcv_mss=%u "
-             "lost=%u retrans=%u rtt=%u rttvar=%u "
-             "sshthresh=%u cwnd=%u total_retrans=%u",
-             tcpi.tcpi_retransmits,  // Number of unrecovered [RTO] timeouts
-             tcpi.tcpi_rto,          // Retransmit timeout in usec
-             tcpi.tcpi_ato,          // Predicted tick of soft clock in usec
-             tcpi.tcpi_snd_mss,
-             tcpi.tcpi_rcv_mss,
-             tcpi.tcpi_lost,         // Lost packets
-             tcpi.tcpi_retrans,      // Retransmitted packets out
-             tcpi.tcpi_rtt,          // Smoothed round trip time in usec
-             tcpi.tcpi_rttvar,       // Medium deviation
-             tcpi.tcpi_snd_ssthresh,
-             tcpi.tcpi_snd_cwnd,
-             tcpi.tcpi_total_retrans);  // Total retransmits for entire connection
+      "rto=%u ato=%u snd_mss=%u rcv_mss=%u "
+      "lost=%u retrans=%u rtt=%u rttvar=%u "
+      "sshthresh=%u cwnd=%u total_retrans=%u",
+      tcpi.tcpi_retransmits,  // Number of unrecovered [RTO] timeouts
+      tcpi.tcpi_rto,          // Retransmit timeout in usec
+      tcpi.tcpi_ato,          // Predicted tick of soft clock in usec
+      tcpi.tcpi_snd_mss,
+      tcpi.tcpi_rcv_mss,
+      tcpi.tcpi_lost,         // Lost packets
+      tcpi.tcpi_retrans,      // Retransmitted packets out
+      tcpi.tcpi_rtt,          // Smoothed round trip time in usec
+      tcpi.tcpi_rttvar,       // Medium deviation
+      tcpi.tcpi_snd_ssthresh,
+      tcpi.tcpi_snd_cwnd,
+      tcpi.tcpi_total_retrans);  // Total retransmits for entire connection
   }
   return ok;
+#else
+  return false;
+#endif
 }
 
-void Socket::bindAddress(const InetAddress& addr)
+void muduo::net::Socket::bindAddress(const InetAddress& localaddr, 
+                                     bool ipv6Only /*= false*/)
 {
-  sockets::bindOrDie(sockfd_, addr.getSockAddrInet());
-}
-
-void Socket::listen()
-{
-  sockets::listenOrDie(sockfd_);
-}
-
-int Socket::accept(InetAddress* peeraddr)
-{
-  struct sockaddr_in addr;
-  bzero(&addr, sizeof addr);
-  int connfd = sockets::accept(sockfd_, &addr);
-  if (connfd >= 0)
+  int err = uv_tcp_bind(socket_, &localaddr.getSockAddr(), 
+    ipv6Only ? UV_TCP_IPV6ONLY : 0);
+  if (err) 
   {
-    peeraddr->setSockAddrInet(addr);
+    LOG_SYSFATAL << uv_strerror(err);
   }
-  return connfd;
 }
 
-void Socket::shutdownWrite()
+void muduo::net::Socket::setSimultaneousAccept( bool on )
 {
-  sockets::shutdownWrite(sockfd_);
+  int err = uv_tcp_simultaneous_accepts(socket_, on);
+  if (err)
+    LOG_SYSFATAL << uv_strerror(err);
+}
+
+void Socket::listen(uv_connection_cb cb)
+{
+  int err = uv_listen(reinterpret_cast<uv_stream_t*>(socket_), 
+                      SOMAXCONN, 
+                      cb);
+  if (err)
+    LOG_SYSFATAL << uv_strerror(err);
+}
+
+int Socket::accept( uv_tcp_t *client, InetAddress* peeraddr )
+{
+  int err = 0;
+  do 
+  {
+	err = uv_accept(reinterpret_cast<uv_stream_t*>(socket_), 
+	                reinterpret_cast<uv_stream_t*>(client));
+	if (err) break;
+	
+    // TODO(cbj): test and remove the err
+	sa addr;
+	int nameLen = sizeof addr;
+	err = uv_tcp_getpeername(client, &addr.u.sa, &nameLen);
+	if (err) break;
+
+    if (addr.u.sa.sa_family == AF_INET)
+    {
+	  peeraddr->setSockAddrInet(addr.u.in);
+    }
+    else
+    {
+      peeraddr->setSockAddrInet6(addr.u.in6);
+    }
+
+  } while (false);
+
+  return err;
+}
+
+void Socket::shutdownWrite(uv_shutdown_t *req, uv_shutdown_cb cb)
+{
+  int err = uv_shutdown(req, reinterpret_cast<uv_stream_t*>(socket_), cb);
+  if (err) 
+  {
+    LOG_SYSFATAL << uv_strerror(err);
+  }
 }
 
 void Socket::setTcpNoDelay(bool on)
 {
-  int optval = on ? 1 : 0;
-  ::setsockopt(sockfd_, IPPROTO_TCP, TCP_NODELAY,
-               &optval, static_cast<socklen_t>(sizeof optval));
-  // FIXME CHECK
+  int err = uv_tcp_nodelay(socket_, on);
+  if (err)
+    LOG_SYSFATAL << uv_strerror(err);
 }
 
 void Socket::setReuseAddr(bool on)
 {
-  int optval = on ? 1 : 0;
-  ::setsockopt(sockfd_, SOL_SOCKET, SO_REUSEADDR,
-               &optval, static_cast<socklen_t>(sizeof optval));
-  // FIXME CHECK
+  // In Unix-like system, socket is set SO_RESUSEADDR when binding.
+  // In Windows, socket is not set SO_RESUSE_ADDR or SO_EXCLUSIVEADDREUSE when binding.
+  // so this function doesn't work
+#ifdef NATIVE_WIN32
+  if (on)
+    LOG_ERROR << "SO_REUSEADDR is not set in Windows";
+#else
+  if (!on)
+    LOG_ERROR << "SO_REUSEADDR is set in Unix";
+#endif
 }
 
 void Socket::setReusePort(bool on)
 {
 #ifdef SO_REUSEPORT
   int optval = on ? 1 : 0;
-  int ret = ::setsockopt(sockfd_, SOL_SOCKET, SO_REUSEPORT,
+  int ret = ::setsockopt(fd(), SOL_SOCKET, SO_REUSEPORT,
                          &optval, static_cast<socklen_t>(sizeof optval));
   if (ret < 0)
   {
@@ -121,9 +200,8 @@ void Socket::setReusePort(bool on)
 
 void Socket::setKeepAlive(bool on)
 {
-  int optval = on ? 1 : 0;
-  ::setsockopt(sockfd_, SOL_SOCKET, SO_KEEPALIVE,
-               &optval, static_cast<socklen_t>(sizeof optval));
-  // FIXME CHECK
+  // WARNING: In libuv 1.0.1, delay is set to 60 when binding.
+  int err = uv_tcp_keepalive(socket_, on, 60);
+  if (err)
+    LOG_SYSFATAL << uv_strerror(err);
 }
-

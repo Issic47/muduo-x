@@ -12,6 +12,7 @@
 #define MUDUO_NET_SOCKET_H
 
 #include <boost/noncopyable.hpp>
+#include <uv.h>
 
 // struct tcp_info is in <netinet/tcp.h>
 struct tcp_info;
@@ -34,30 +35,35 @@ class InetAddress;
 class Socket : boost::noncopyable
 {
  public:
-  explicit Socket(int sockfd)
-    : sockfd_(sockfd)
-  { }
+  // Socket instance will own this socket
+  explicit Socket(uv_tcp_t *socket);
 
-  // Socket(Socket&&) // move constructor in C++11
+  // Socket(Socket &&other);
+
   ~Socket();
 
-  int fd() const { return sockfd_; }
+  uv_os_sock_t fd() const;
+
   // return true if success.
   bool getTcpInfo(struct tcp_info*) const;
   bool getTcpInfoString(char* buf, int len) const;
 
   /// abort if address in use
-  void bindAddress(const InetAddress& localaddr);
+  void bindAddress(const InetAddress& localaddr, bool ipv6Only = false);
+
   /// abort if address in use
-  void listen();
+  void listen(uv_connection_cb cb);
 
   /// On success, returns a non-negative integer that is
   /// a descriptor for the accepted socket, which has been
   /// set to non-blocking and close-on-exec. *peeraddr is assigned.
   /// On error, -1 is returned, and *peeraddr is untouched.
-  int accept(InetAddress* peeraddr);
+  /// WARNING: client must be initialized before this function called
+  int accept(uv_tcp_t *client, InetAddress* peeraddr);
 
-  void shutdownWrite();
+  void shutdownWrite(uv_shutdown_t *req, uv_shutdown_cb cb);
+
+  void setSimultaneousAccept(bool on);
 
   ///
   /// Enable/disable TCP_NODELAY (disable/enable Nagle's algorithm).
@@ -78,9 +84,12 @@ class Socket : boost::noncopyable
   /// Enable/disable SO_KEEPALIVE
   ///
   void setKeepAlive(bool on);
-
+  
  private:
-  const int sockfd_;
+  static void closeCallback(uv_handle_t *handle);
+
+  uv_tcp_t *socket_;
+  
 };
 
 }
