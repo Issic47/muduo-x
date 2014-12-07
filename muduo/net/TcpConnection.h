@@ -51,6 +51,16 @@ class TcpConnection : boost::noncopyable,
                 int sockfd,
                 const InetAddress& localAddr,
                 const InetAddress& peerAddr);
+
+  /// Constructs a TcpConnection with a connected sockfd
+  ///
+  /// User should not create this object.
+  TcpConnection(EventLoop* loop,
+                const string& name,
+                uv_tcp_t *socket,
+                const InetAddress& localAddr,
+                const InetAddress& peerAddr);
+
   ~TcpConnection();
 
   EventLoop* getLoop() const { return loop_; }

@@ -64,10 +64,31 @@ TcpConnection::TcpConnection(EventLoop* loop,
   socket_->setKeepAlive(true);
 }
 
+TcpConnection::TcpConnection(EventLoop* loop, 
+                             const string& nameArg, 
+                             uv_tcp_t *socket, 
+                             const InetAddress& localAddr, 
+                             const InetAddress& peerAddr)
+  : loop_(CHECK_NOTNULL(loop)),
+    name_(nameArg),
+    state_(kConnecting),
+    socket_(new Socket(socket)),
+    //channel_(new Channel(loop, sockfd)),
+    localAddr_(localAddr),
+    peerAddr_(peerAddr),
+    highWaterMark_(64*1024*1024)
+{
+
+  LOG_DEBUG << "TcpConnection::ctor[" <<  name_ << "] at " << this
+            << " fd=" << socket_->fd();
+  socket_->setKeepAlive(true);
+}
+
+
 TcpConnection::~TcpConnection()
 {
   LOG_DEBUG << "TcpConnection::dtor[" <<  name_ << "] at " << this
-            << " fd=" << channel_->fd()
+            << " fd=" << socket_->fd()
             << " state=" << state_;
   assert(state_ == kDisconnected);
 }
@@ -378,4 +399,5 @@ void TcpConnection::handleError()
   LOG_ERROR << "TcpConnection::handleError [" << name_
             << "] - SO_ERROR = " << err << " " << strerror_tl(err);
 }
+
 
