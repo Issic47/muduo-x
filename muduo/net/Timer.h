@@ -86,8 +86,6 @@ class Timer : public boost::enable_shared_from_this<Timer>, boost::noncopyable
   bool repeat() const { return repeat_; }
   int64_t sequence() const { return sequence_; }
 
-  void restart(Timestamp now);
-
   static int64_t numCreated() { return s_numCreated_.get(); }
 
  private:

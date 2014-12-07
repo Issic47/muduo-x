@@ -31,18 +31,6 @@ using namespace muduo::net::detail;
 
 AtomicInt64 Timer::s_numCreated_;
 
-void Timer::restart(Timestamp now)
-{
-  if (repeat_)
-  {
-    expiration_ = addTime(now, interval_);
-  }
-  else
-  {
-    expiration_ = Timestamp::invalid();
-  }
-}
-
 int muduo::net::Timer::start()
 {
   assert(init_);
