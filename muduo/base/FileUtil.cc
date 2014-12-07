@@ -48,8 +48,7 @@ using namespace muduo;
 
 FileUtil::AppendFile::AppendFile(StringArg filename)
   : 
-// FIXME(cbj)
-#if defined(_WIN32)
+#if defined(NATIVE_WIN32)
     fp_(::fopen(filename.c_str(), "a")),
 #else
     fp_(::fopen(filename.c_str(), "ae")),  // 'e' for O_CLOEXEC
@@ -111,14 +110,10 @@ FileUtil::ReadSmallFile::ReadSmallFile(StringArg filename)
 
   uv_fs_t req;
   utilities::FSReqAutoCleanup helper(&req);
-  err_ = uv_fs_open(NULL, &req, filename.c_str(), O_RDONLY, 0, NULL);
-  if (err_ == 0)
+  fd_ = uv_fs_open(NULL, &req, filename.c_str(), O_RDONLY, 0, NULL);
+  if (fd_ < 0) 
   {
-    fd_ = req.result;
-    if (fd_ < 0) 
-    {
-      err_ = req.result;
-    }
+    err_ = req.result;
   }
 }
 
@@ -127,8 +122,8 @@ FileUtil::ReadSmallFile::~ReadSmallFile()
   if (fd_ >= 0)
   {
     uv_fs_t req;
+    utilities::FSReqAutoCleanup helper(&req);
     err_ = uv_fs_close(NULL, &req, fd_, NULL);
-    uv_fs_req_cleanup(&req);
   }
 }
 
@@ -156,28 +151,25 @@ int FileUtil::ReadSmallFile::readToString(int maxSize,
       err = uv_fs_fstat(NULL, &fstat_req, fd_, NULL);
       if (err == 0)
       {
-        if ((err=fstat_req.result) == 0) 
+        if (S_ISREG(fstat_req.statbuf.st_mode))
         {
-          if (S_ISREG(fstat_req.statbuf.st_mode))
-          {
-            *fileSize = fstat_req.statbuf.st_size;
-            content->reserve(static_cast<int>((std::min)(implicit_cast<int64_t>(maxSize), *fileSize)));
-          }
-          else if (S_ISDIR(fstat_req.statbuf.st_mode))
-          {
-            err = UV_EISDIR;
-          }
-          if (modifyTime)
-          {
-            uv_timespec_t *timespec = &fstat_req.statbuf.st_mtim;
-            *modifyTime = timespec->tv_sec;
-          }
-          if (createTime)
-          {
-            uv_timespec_t *timespec = &fstat_req.statbuf.st_ctim;
-            *createTime = timespec->tv_sec;
-          }
+          *fileSize = fstat_req.statbuf.st_size;
+          content->reserve(static_cast<int>((std::min)(implicit_cast<int64_t>(maxSize), *fileSize)));
         }
+        else if (S_ISDIR(fstat_req.statbuf.st_mode))
+        {
+          err = UV_EISDIR;
+        }
+        if (modifyTime)
+        {
+          uv_timespec_t *timespec = &fstat_req.statbuf.st_mtim;
+          *modifyTime = timespec->tv_sec;
+        }
+        if (createTime)
+        {
+          uv_timespec_t *timespec = &fstat_req.statbuf.st_ctim;
+          *createTime = timespec->tv_sec;
+        } 
       }
     }
 
@@ -188,10 +180,7 @@ int FileUtil::ReadSmallFile::readToString(int maxSize,
       utilities::FSReqAutoCleanup helper(&read_req);
       
       uv_buf_t buf = uv_buf_init(buf_, toRead);
-      err = uv_fs_read(NULL, &read_req, fd_, &buf, 1, -1, NULL);
-      if (err) break;
-
-      ssize_t n = read_req.result;
+      ssize_t n = uv_fs_read(NULL, &read_req, fd_, &buf, 1, -1, NULL);
       if (n > 0)
       {
         content->append(buf_, n);
@@ -217,21 +206,18 @@ int FileUtil::ReadSmallFile::readToBuffer(int* size)
     uv_fs_t read_req;
     utilities::FSReqAutoCleanup helper(&read_req);
     uv_buf_t buf = uv_buf_init(buf_, sizeof(buf_) - 1);
-    err = uv_fs_read(NULL, &read_req, fd_, &buf, 1, 0, NULL);
-    if (err == 0) {
-      ssize_t n = read_req.result;
-      if (n >= 0)
+    ssize_t n = uv_fs_read(NULL, &read_req, fd_, &buf, 1, 0, NULL);
+    if (n >= 0)
+    {
+      if (size)
       {
-        if (size)
-        {
-          *size = static_cast<int>(n);
-        }
-        buf_[n] = '\0';
+        *size = static_cast<int>(n);
       }
-      else
-      {
-        err = read_req.result;
-      }
+      buf_[n] = '\0';
+    }
+    else
+    {
+      err = read_req.result;
     }
   }
   return err;
