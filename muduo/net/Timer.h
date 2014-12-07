@@ -38,7 +38,8 @@ class Timer : public boost::enable_shared_from_this<Timer>, boost::noncopyable
       repeat_(interval > 0.0),
       sequence_(s_numCreated_.incrementAndGet()),
       afterTimeoutCallback_(afterTimeoutCallback),
-      init_(false)
+      init_(false),
+      timer_(new uv_timer_t)
   { }
 
   Timer(TimerCallback&& cb, Timestamp when, double interval,
@@ -49,7 +50,8 @@ class Timer : public boost::enable_shared_from_this<Timer>, boost::noncopyable
       repeat_(interval > 0.0),
       sequence_(s_numCreated_.incrementAndGet()),
       afterTimeoutCallback_(std::move(afterTimeoutCallback)),
-      init_(false)
+      init_(false),
+      timer_(new uv_timer_t)
   { }
 
   ~Timer() 
@@ -57,8 +59,8 @@ class Timer : public boost::enable_shared_from_this<Timer>, boost::noncopyable
     if (init_) 
     {
       // FIXME(cbj): need to stop the timer first?
-      uv_timer_stop(&timer_);
-      uv_close(reinterpret_cast<uv_handle_t*>(&timer_), NULL);
+      uv_timer_stop(timer_);
+      uv_close(reinterpret_cast<uv_handle_t*>(timer_), &Timer::closeCallback);
       init_ = false;
     }
   }
@@ -67,18 +69,18 @@ class Timer : public boost::enable_shared_from_this<Timer>, boost::noncopyable
   {
     int err = 0;
     if (!init_) {
-      err = uv_timer_init(loop, &timer_);
+      err = uv_timer_init(loop, timer_);
       // Not need to unref the timer
       //uv_unref(reinterpret_cast<uv_handle_t*>(timer->getUVTimer()));
       init_ = err == 0;
-      timer_.data = this;
+      timer_->data = this;
     }
     return err;
   }
 
   int start();
 
-  int stop() { assert(init_); return uv_timer_stop(&timer_); }
+  int stop() { assert(init_); return uv_timer_stop(timer_); }
 
   Timestamp expiration() const  { return expiration_; }
   bool repeat() const { return repeat_; }
@@ -97,10 +99,16 @@ class Timer : public boost::enable_shared_from_this<Timer>, boost::noncopyable
     timer->afterTimeoutCallback_(timer->shared_from_this());
   }
 
+  static void closeCallback(uv_handle_t *handle)
+  {
+    assert(uv_is_closing(handle));
+    delete handle;  // release timer
+  }
+
  private:
   const TimerCallback callback_;
   const AfterTimeoutCallback afterTimeoutCallback_;
-  uv_timer_t timer_;
+  uv_timer_t *timer_;
   Timestamp expiration_;
   bool init_;
   const double interval_;

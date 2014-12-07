@@ -53,7 +53,7 @@ int muduo::net::Timer::start()
     delay = 0.0;  // need to set it to 0.0
   }
   int err = uv_timer_start(
-    &timer_, &Timer::uvTimeoutCallback, convertToMillisecond(delay), 
+    timer_, &Timer::uvTimeoutCallback, convertToMillisecond(delay), 
     repeat_ ? convertToMillisecond(interval_) : 0);
   return err;
 }
