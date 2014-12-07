@@ -198,7 +198,7 @@ Thread::Thread(ThreadFunc&& func, const string& n)
 Thread::~Thread()
 {
   if (started_ && !joined_) {
-    // hack
+    // FIXME(cbj): hack to detach the thread
 #ifdef NATIVE_WIN32
     CloseHandle(pthreadId_);
 #else
