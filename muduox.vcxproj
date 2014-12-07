@@ -176,6 +176,26 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="muduo\net\Acceptor.cc" />
+    <ClCompile Include="muduo\net\boilerplate.cc" />
+    <ClCompile Include="muduo\net\Buffer.cc" />
+    <ClCompile Include="muduo\net\Channel.cc" />
+    <ClCompile Include="muduo\net\Connector.cc" />
+    <ClCompile Include="muduo\net\EventLoop.cc" />
+    <ClCompile Include="muduo\net\EventLoopThread.cc" />
+    <ClCompile Include="muduo\net\EventLoopThreadPool.cc" />
+    <ClCompile Include="muduo\net\InetAddress.cc" />
+    <ClCompile Include="muduo\net\Poller.cc" />
+    <ClCompile Include="muduo\net\poller\DefaultPoller.cc" />
+    <ClCompile Include="muduo\net\poller\EPollPoller.cc" />
+    <ClCompile Include="muduo\net\poller\PollPoller.cc" />
+    <ClCompile Include="muduo\net\Socket.cc" />
+    <ClCompile Include="muduo\net\SocketsOps.cc" />
+    <ClCompile Include="muduo\net\TcpClient.cc" />
+    <ClCompile Include="muduo\net\TcpConnection.cc" />
+    <ClCompile Include="muduo\net\TcpServer.cc" />
+    <ClCompile Include="muduo\net\Timer.cc" />
+    <ClCompile Include="muduo\net\TimerQueue.cc" />
     <ClCompile Include="muduo\win32\strncasecmp.cpp" />
     <ClCompile Include="muduo\win32\strptime.cpp" />
     <ClCompile Include="muduo\win32\WinFunc.cpp" />
@@ -291,6 +311,29 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="muduo\net\Acceptor.h" />
+    <ClInclude Include="muduo\net\boilerplate.h" />
+    <ClInclude Include="muduo\net\Buffer.h" />
+    <ClInclude Include="muduo\net\Callbacks.h" />
+    <ClInclude Include="muduo\net\Channel.h" />
+    <ClInclude Include="muduo\net\Connector.h" />
+    <ClInclude Include="muduo\net\Endian.h" />
+    <ClInclude Include="muduo\net\EventLoop.h" />
+    <ClInclude Include="muduo\net\EventLoopThread.h" />
+    <ClInclude Include="muduo\net\EventLoopThreadPool.h" />
+    <ClInclude Include="muduo\net\InetAddress.h" />
+    <ClInclude Include="muduo\net\Poller.h" />
+    <ClInclude Include="muduo\net\poller\EPollPoller.h" />
+    <ClInclude Include="muduo\net\poller\PollPoller.h" />
+    <ClInclude Include="muduo\net\Socket.h" />
+    <ClInclude Include="muduo\net\SocketsOps.h" />
+    <ClInclude Include="muduo\net\TcpClient.h" />
+    <ClInclude Include="muduo\net\TcpConnection.h" />
+    <ClInclude Include="muduo\net\TcpServer.h" />
+    <ClInclude Include="muduo\net\Timer.h" />
+    <ClInclude Include="muduo\net\TimerId.h" />
+    <ClInclude Include="muduo\net\TimerQueue.h" />
+    <ClInclude Include="muduo\net\ZlibStream.h" />
     <ClInclude Include="muduo\win32\WinFunc.h" />
     <ClInclude Include="muduo\win32\WinTypes.h" />
   </ItemGroup>

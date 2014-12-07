@@ -10,6 +10,9 @@
     <Filter Include="win32">
       <UniqueIdentifier>{78fe6418-df78-4a5e-90a1-ac3784f08143}</UniqueIdentifier>
     </Filter>
+    <Filter Include="net\poller">
+      <UniqueIdentifier>{536fb232-9012-42a6-90c1-d959d43ae9f4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="muduo\base\AsyncLogging.cc">
@@ -65,6 +68,66 @@
     </ClCompile>
     <ClCompile Include="muduo\win32\strptime.cpp">
       <Filter>win32</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\EventLoop.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\Timer.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\TimerQueue.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\Poller.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\poller\DefaultPoller.cc">
+      <Filter>net\poller</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\poller\EPollPoller.cc">
+      <Filter>net\poller</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\poller\PollPoller.cc">
+      <Filter>net\poller</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\Channel.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\SocketsOps.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\InetAddress.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\Acceptor.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\Buffer.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\boilerplate.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\Connector.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\EventLoopThread.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\EventLoopThreadPool.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\Socket.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\TcpClient.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\TcpConnection.cc">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\TcpServer.cc">
+      <Filter>net</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -157,6 +220,75 @@
     </ClInclude>
     <ClInclude Include="muduo\win32\WinFunc.h">
       <Filter>win32</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\EventLoop.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\Timer.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\TimerId.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\TimerQueue.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\Endian.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\Poller.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\poller\EPollPoller.h">
+      <Filter>net\poller</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\poller\PollPoller.h">
+      <Filter>net\poller</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\Channel.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\SocketsOps.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\InetAddress.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\Acceptor.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\Buffer.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\boilerplate.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\Callbacks.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\Connector.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\EventLoopThread.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\EventLoopThreadPool.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\Socket.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\TcpClient.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\TcpConnection.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\TcpServer.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\ZlibStream.h">
+      <Filter>net</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
