@@ -103,11 +103,9 @@ class EventLoop : boost::noncopyable
   ///
   void cancel(TimerId timerId);
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
   TimerId runAt(const Timestamp& time, TimerCallback&& cb);
   TimerId runAfter(double delay, TimerCallback&& cb);
   TimerId runEvery(double interval, TimerCallback&& cb);
-#endif
 
   uv_loop_t *getUVLoop() { return &loop_; }
 
@@ -144,7 +142,6 @@ class EventLoop : boost::noncopyable
   static void loopPrepareCallback(uv_prepare_t *handle);
   static void loopCheckCallback(uv_check_t *handle);
   static void loopAsyncCallback(uv_async_t *handle);
-  static void loopTimeoutCallback(uv_timer_t &handle);
   static void closeWalkCallback(uv_handle_t *handle, void *arg);
 
   void abortNotInLoopThread();

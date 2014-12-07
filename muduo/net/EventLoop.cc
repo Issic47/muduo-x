@@ -18,7 +18,6 @@
 #include <boost/bind.hpp>
 
 #include <signal.h>
-#include <sys/eventfd.h>
 
 using namespace muduo;
 using namespace muduo::net;
@@ -29,24 +28,15 @@ thread_local EventLoop* t_loopInThisThread = 0;
 
 const int kPollTimeMs = 10000;
 
-int createEventfd()
-{
-  int evtfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-  if (evtfd < 0)
-  {
-    LOG_SYSERR << "Failed in eventfd";
-    abort();
-  }
-  return evtfd;
-}
-
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 class IgnoreSigPipe
 {
  public:
   IgnoreSigPipe()
   {
+#ifndef NATIVE_WIN32
     ::signal(SIGPIPE, SIG_IGN);
+#endif
     // LOG_TRACE << "Ignore SIGPIPE";
   }
 };
@@ -69,8 +59,6 @@ EventLoop::EventLoop()
     threadId_(CurrentThread::tid()),
     poller_(Poller::newDefaultPoller(this)),
     timerQueue_(new TimerQueue(this)),
-    wakeupFd_(createEventfd()),
-    wakeupChannel_(new Channel(this, wakeupFd_)),
     currentActiveChannel_(NULL)
 {
   LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
@@ -116,12 +104,6 @@ EventLoop::EventLoop()
     LOG_FATAL << "Event Loop init failed with error: " << uv_strerror(err) 
               << " in thread " << threadId_;
   }
-  
-
-  wakeupChannel_->setReadCallback(
-      boost::bind(&EventLoop::handleRead, this));
-  // we are always reading the wakeupfd
-  wakeupChannel_->enableReading();
 }
 
 EventLoop::~EventLoop()
@@ -160,11 +142,6 @@ void muduo::net::EventLoop::loopAsyncCallback( uv_async_t *handle )
   assert(handle->data);
   EventLoop *loop = static_cast<EventLoop*>(handle->data);
   LOG_TRACE << "EventLoop " << loop << " is wakeup";
-}
-
-void muduo::net::EventLoop::loopTimeoutCallback( uv_timer_t &handle )
-{
-
 }
 
 void muduo::net::EventLoop::closeWalkCallback(uv_handle_t *handle, void *arg)
@@ -307,7 +284,6 @@ void EventLoop::queueInLoop(Functor&& cb)
   }
 }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
 TimerId EventLoop::runAt(const Timestamp& time, TimerCallback&& cb)
 {
   return timerQueue_->addTimer(std::move(cb), time, 0.0);
@@ -324,7 +300,6 @@ TimerId EventLoop::runEvery(double interval, TimerCallback&& cb)
   Timestamp time(addTime(Timestamp::now(), interval));
   return timerQueue_->addTimer(std::move(cb), time, interval);
 }
-#endif // __GXX_EXPERIMENTAL_CXX0X__
 
 void EventLoop::cancel(TimerId timerId)
 {
