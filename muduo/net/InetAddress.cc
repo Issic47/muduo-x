@@ -36,7 +36,9 @@
 using namespace muduo;
 using namespace muduo::net;
 
-muduo::net::InetAddress::InetAddress( int af /*= AF_NET*/, uint16_t port /*= 0*/, bool loopbackOnly /*= false*/ )
+muduo::net::InetAddress::InetAddress(int af /*= AF_NET*/, 
+                                     uint16_t port /*= 0*/, 
+                                     bool loopbackOnly /*= false*/ )
 {
   bzero(&addr_, sizeof addr_);
   switch (af)
@@ -64,7 +66,7 @@ muduo::net::InetAddress::InetAddress( int af /*= AF_NET*/, uint16_t port /*= 0*/
     break;
 
   default:
-    LOG_SYSERR << "No support address family:" << af;
+    LOG_SYSERR << "No support address family:" << af << " in InetAddres::InetAddree";
     break;
   }
 
@@ -92,7 +94,8 @@ InetAddress::InetAddress(int af, StringArg ip, uint16_t port)
   }
   if (err)
     LOG_SYSERR << uv_strerror(err) 
-              << "(" << af << "," << ip.c_str() << ":" << port << ")";
+               << "(" << af << "," << ip.c_str() << ":" << port << ")"
+               << " in InetAddress::InetAddress";
 }
 
 muduo::net::InetAddress::InetAddress( const struct sockaddr& addr )
@@ -110,7 +113,8 @@ muduo::net::InetAddress::InetAddress( const struct sockaddr& addr )
     break;
 
   default:
-    LOG_SYSERR << "No support address family:" << addr.sa_family;
+    LOG_SYSERR << "No support address family:" << addr.sa_family 
+               << " in InetAddress::InetAddress";
     break;
   }
 }
@@ -136,7 +140,7 @@ string InetAddress::toIpPort() const
   if (err) 
   {
     buf[0] = '\0';
-    LOG_SYSERR << uv_strerror(err);
+    LOG_SYSERR << uv_strerror(err) << " in InetAddress::toIpPort";
   }
 
   return buf;
@@ -161,7 +165,7 @@ string InetAddress::toIp() const
   if (err)
   {
     buf[0] = '\0';
-    LOG_SYSERR << uv_strerror(err);
+    LOG_SYSERR << uv_strerror(err) << " in InetAddress::toIp";
   }
   
   return buf;

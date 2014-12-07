@@ -344,8 +344,7 @@ void EventLoop::wakeup()
   int err = uv_async_send(&async_handle_);
   if (err) 
   {
-    LOG_ERROR << "A error occured when call uv_sync_send in EventLoop::wakeup():" 
-              << uv_strerror(err);
+    LOG_ERROR << uv_strerror(err) << " in EventLoop::wakeup()";
   }
 }
 

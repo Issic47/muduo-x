@@ -42,13 +42,13 @@ void Socket::closeCallback( uv_handle_t *handle )
   delete handle;
 }
 
-uv_os_sock_t muduo::net::Socket::fd() const
+uv_os_sock_t Socket::fd() const
 {
   uv_os_fd_t fd;
   int err = uv_fileno(
     reinterpret_cast<const uv_handle_t*>(socket_), &fd);
   if (err)
-    LOG_ERROR << uv_strerror(err);
+    LOG_ERROR << uv_strerror(err) << " in Socket::fd";
   return reinterpret_cast<uv_os_sock_t>(fd);
 }
 
@@ -90,26 +90,26 @@ bool Socket::getTcpInfoString(char* buf, int len) const
   }
   return ok;
 #else
+  buf[0] = '\0';
   return false;
 #endif
 }
 
-void muduo::net::Socket::bindAddress(const InetAddress& localaddr, 
-                                     bool ipv6Only /*= false*/)
+void Socket::bindAddress(const InetAddress& localaddr, bool ipv6Only /*= false*/)
 {
   int err = uv_tcp_bind(socket_, &localaddr.getSockAddr(), 
     ipv6Only ? UV_TCP_IPV6ONLY : 0);
   if (err) 
   {
-    LOG_SYSFATAL << uv_strerror(err);
+    LOG_SYSFATAL << uv_strerror(err) << " in Socket::bindAddress";
   }
 }
 
-void muduo::net::Socket::setSimultaneousAccept( bool on )
+void Socket::setSimultaneousAccept( bool on )
 {
   int err = uv_tcp_simultaneous_accepts(socket_, on);
   if (err)
-    LOG_SYSFATAL << uv_strerror(err);
+    LOG_SYSFATAL << uv_strerror(err) << " in Socket::setSimultaneousAccept";
 }
 
 void Socket::listen(uv_connection_cb cb)
@@ -118,7 +118,7 @@ void Socket::listen(uv_connection_cb cb)
                       SOMAXCONN, 
                       cb);
   if (err)
-    LOG_SYSFATAL << uv_strerror(err);
+    LOG_SYSFATAL << uv_strerror(err) << " in Socket::listen";
 }
 
 int Socket::accept( uv_tcp_t *client, InetAddress* peeraddr )
@@ -126,22 +126,23 @@ int Socket::accept( uv_tcp_t *client, InetAddress* peeraddr )
   int err = 0;
   do 
   {
+    // NOTE: uv_accept handle EMFILE error use idle fd.
 	err = uv_accept(reinterpret_cast<uv_stream_t*>(socket_), 
 	                reinterpret_cast<uv_stream_t*>(client));
 	if (err) break;
 	
-    // TODO(cbj): test and remove the err
 	sa addr;
 	int nameLen = sizeof addr;
 	err = uv_tcp_getpeername(client, &addr.u.sa, &nameLen);
-	if (err) break;
+	assert(err == 0);
 
     if (addr.u.sa.sa_family == AF_INET)
     {
 	  peeraddr->setSockAddrInet(addr.u.in);
     }
-    else
+    else // AF_INET6
     {
+      assert(addr.u.sa.sa_family == AF_INET6);
       peeraddr->setSockAddrInet6(addr.u.in6);
     }
 
@@ -155,7 +156,7 @@ void Socket::shutdownWrite(uv_shutdown_t *req, uv_shutdown_cb cb)
   int err = uv_shutdown(req, reinterpret_cast<uv_stream_t*>(socket_), cb);
   if (err) 
   {
-    LOG_SYSFATAL << uv_strerror(err);
+    LOG_SYSFATAL << uv_strerror(err) << " in Socket::shutdownWrite";
   }
 }
 
@@ -163,7 +164,7 @@ void Socket::setTcpNoDelay(bool on)
 {
   int err = uv_tcp_nodelay(socket_, on);
   if (err)
-    LOG_SYSFATAL << uv_strerror(err);
+    LOG_SYSFATAL << uv_strerror(err) << " in Socket::setTcpNoDelay";
 }
 
 void Socket::setReuseAddr(bool on)
@@ -188,12 +189,12 @@ void Socket::setReusePort(bool on)
                          &optval, static_cast<socklen_t>(sizeof optval));
   if (ret < 0)
   {
-    LOG_SYSERR << "SO_REUSEPORT failed.";
+    LOG_SYSERR << "SO_REUSEPORT failed in Socket::setReusePort";
   }
 #else
   if (on)
   {
-    LOG_ERROR << "SO_REUSEPORT is not supported.";
+    LOG_ERROR << "SO_REUSEPORT is not supported";
   }
 #endif
 }
@@ -203,5 +204,5 @@ void Socket::setKeepAlive(bool on)
   // WARNING: In libuv 1.0.1, delay is set to 60 when binding.
   int err = uv_tcp_keepalive(socket_, on, 60);
   if (err)
-    LOG_SYSFATAL << uv_strerror(err);
+    LOG_SYSFATAL << uv_strerror(err) << " in Socket::setKeepAlive";
 }

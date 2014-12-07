@@ -100,7 +100,7 @@ void TimerQueue::addTimerInLoop(TimerPtr timer)
   
   if (err) 
   {
-    LOG_ERROR << "TimerQueue::addTimerInLoop: " << uv_strerror(err);
+    LOG_ERROR << uv_strerror(err) << " in TimerQueue::addTimerInLoop";
   }
 }
 
