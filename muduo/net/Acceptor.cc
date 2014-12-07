@@ -11,80 +11,84 @@
 #include <muduo/base/Logging.h>
 #include <muduo/net/EventLoop.h>
 #include <muduo/net/InetAddress.h>
-#include <muduo/net/SocketsOps.h>
-
-#include <boost/bind.hpp>
-
-#include <errno.h>
-#include <fcntl.h>
-//#include <sys/types.h>
-//#include <sys/stat.h>
 
 using namespace muduo;
 using namespace muduo::net;
 
 Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reuseport)
   : loop_(loop),
-    acceptSocket_(sockets::createNonblockingOrDie()),
-    acceptChannel_(loop, acceptSocket_.fd()),
-    listenning_(false),
-    idleFd_(::open("/dev/null", O_RDONLY | O_CLOEXEC))
-{
-  assert(idleFd_ >= 0);
+    uvSocket_(new uv_tcp_t),
+    acceptSocket_(uvSocket_),
+    listenning_(false)
+{ 
+  int err = uv_tcp_init(loop_->getUVLoop(), uvSocket_);
+  if (err)
+    LOG_SYSFATAL << uv_strerror(err);
+
+#ifndef NATIVE_WIN32
   acceptSocket_.setReuseAddr(true);
+#endif
   acceptSocket_.setReusePort(reuseport);
   acceptSocket_.bindAddress(listenAddr);
-  acceptChannel_.setReadCallback(
-      boost::bind(&Acceptor::handleRead, this));
 }
 
 Acceptor::~Acceptor()
 {
-  acceptChannel_.disableAll();
-  acceptChannel_.remove();
-  ::close(idleFd_);
+  uv_close(reinterpret_cast<uv_handle_t*>(uvSocket_), 
+    &Acceptor::onHandleCloseCallback);
+}
+
+void Acceptor::onHandleCloseCallback( uv_handle_t *handle )
+{
+  assert(uv_is_closing(handle));
+  delete handle;
 }
 
 void Acceptor::listen()
 {
   loop_->assertInLoopThread();
   listenning_ = true;
-  acceptSocket_.listen();
-  acceptChannel_.enableReading();
+  uvSocket_->data = this;
+  acceptSocket_.listen(&Acceptor::onNewConnectionCallback);
 }
 
-void Acceptor::handleRead()
+void Acceptor::onNewConnectionCallback( uv_stream_t *server, int status )
 {
-  loop_->assertInLoopThread();
-  InetAddress peerAddr;
-  //FIXME loop until no more
-  int connfd = acceptSocket_.accept(&peerAddr);
-  if (connfd >= 0)
+  if (status) 
   {
-    // string hostport = peerAddr.toIpPort();
-    // LOG_TRACE << "Accepts of " << hostport;
-    if (newConnectionCallback_)
+    LOG_SYSERR << uv_strerror(status) << " in Acceptor::onNewConnectionCallback";
+    return;
+  }
+
+  assert(server->data);
+  Acceptor *acceptor = static_cast<Acceptor*>(server->data);
+  
+  acceptor->loop_->assertInLoopThread();
+
+  uv_tcp_t *client = new uv_tcp_t;
+  int err = uv_tcp_init(acceptor->loop_->getUVLoop(), client);
+  if (err)
+    LOG_SYSFATAL << uv_strerror(err) << " in Acceptor::onNewConnectionCallback";
+
+  InetAddress peerAddr;
+  err = acceptor->acceptSocket_.accept(client, &peerAddr);
+  if (err)
+  {
+    LOG_SYSERR << uv_strerror(err) << " in Acceptor::onNewConnectionCallback";
+    delete client; // TODO: use free list
+  } 
+  else 
+  {
+    if (acceptor->newConnectionCallback_)
     {
-      newConnectionCallback_(connfd, peerAddr);
+      acceptor->newConnectionCallback_(client, peerAddr);
     }
     else
     {
-      sockets::close(connfd);
-    }
-  }
-  else
-  {
-    LOG_SYSERR << "in Acceptor::handleRead";
-    // Read the section named "The special problem of
-    // accept()ing when you can't" in libev's doc.
-    // By Marc Lehmann, author of livev.
-    if (errno == EMFILE)
-    {
-      ::close(idleFd_);
-      idleFd_ = ::accept(acceptSocket_.fd(), NULL, NULL);
-      ::close(idleFd_);
-      idleFd_ = ::open("/dev/null", O_RDONLY | O_CLOEXEC);
+      uv_close(reinterpret_cast<uv_handle_t*>(client),
+        &Acceptor::onHandleCloseCallback);
     }
   }
 }
+
 

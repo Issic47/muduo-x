@@ -31,7 +31,7 @@ class InetAddress;
 class Acceptor : boost::noncopyable
 {
  public:
-  typedef boost::function<void (int sockfd,
+  typedef boost::function<void (uv_tcp_t*,
                                 const InetAddress&)> NewConnectionCallback;
 
   Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reuseport);
@@ -44,14 +44,15 @@ class Acceptor : boost::noncopyable
   void listen();
 
  private:
+  static void onNewConnectionCallback(uv_stream_t *server, int status);
+  static void onHandleCloseCallback(uv_handle_t *handle);
   void handleRead();
 
   EventLoop* loop_;
+  uv_tcp_t *uvSocket_;
   Socket acceptSocket_;
-  Channel acceptChannel_;
   NewConnectionCallback newConnectionCallback_;
   bool listenning_;
-  int idleFd_;
 };
 
 }
