@@ -45,6 +45,10 @@ class Connector : boost::noncopyable,
   const InetAddress& serverAddress() const { return serverAddr_; }
 
  private:
+  static void onConnectCallback(uv_connect_t *req, int status);
+  static void onHandleCloseCallback(uv_handle_t *handle);
+
+ private:
   enum States { kDisconnected, kConnecting, kConnected };
   static const int kMaxRetryDelayMs = 30*1000;
   static const int kInitRetryDelayMs = 500;
@@ -59,12 +63,15 @@ class Connector : boost::noncopyable,
   void retry(int sockfd);
   int removeAndResetChannel();
   void resetChannel();
+  void handleConnectError(int err);
 
   EventLoop* loop_;
   InetAddress serverAddr_;
   bool connect_; // atomic
   States state_;  // FIXME: use atomic variable
-  boost::scoped_ptr<Channel> channel_;
+  //boost::scoped_ptr<Channel> channel_;
+  uv_tcp_t *socket_;
+  uv_connect_t *req_;
   NewConnectionCallback newConnectionCallback_;
   int retryDelayMs_;
 };

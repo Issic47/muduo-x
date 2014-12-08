@@ -16,6 +16,8 @@
 
 #include <boost/bind.hpp>
 
+#include <uv.h>
+
 #include <errno.h>
 
 using namespace muduo;
@@ -28,15 +30,31 @@ Connector::Connector(EventLoop* loop, const InetAddress& serverAddr)
     serverAddr_(serverAddr),
     connect_(false),
     state_(kDisconnected),
-    retryDelayMs_(kInitRetryDelayMs)
+    retryDelayMs_(kInitRetryDelayMs),
+    socket_(new uv_tcp_t),
+    req_(new uv_connect_t)
 {
   LOG_DEBUG << "ctor[" << this << "]";
+  req_->data = this;
 }
 
 Connector::~Connector()
 {
   LOG_DEBUG << "dtor[" << this << "]";
-  assert(!channel_);
+  //assert(!channel_);
+  if (socket_)
+  {
+    uv_close(reinterpret_cast<uv_handle_t*>(socket_), 
+      &Connector::onHandleCloseCallback);
+  }
+}
+
+void Connector::onHandleCloseCallback( uv_handle_t *handle )
+{
+  assert(uv_is_closing(handle));
+  assert(handle->data);
+  static_cast<Connector*>(handle->data)->socket_ = nullptr;
+  delete handle;
 }
 
 void Connector::start()
@@ -79,43 +97,76 @@ void Connector::stopInLoop()
 
 void Connector::connect()
 {
-  int sockfd = sockets::createNonblockingOrDie();
-  int ret = sockets::connect(sockfd, serverAddr_.getSockAddrInet());
-  int savedErrno = (ret == 0) ? 0 : errno;
-  switch (savedErrno)
+  if (nullptr == socket_)
+    socket_ = new uv_tcp_t;
+
+  int err = uv_tcp_init(loop_->getUVLoop(), socket_);
+  socket_->data = this;
+  if (err) 
   {
-    case 0:
-    case EINPROGRESS:
-    case EINTR:
-    case EISCONN:
-      connecting(sockfd);
-      break;
-
-    case EAGAIN:
-    case EADDRINUSE:
-    case EADDRNOTAVAIL:
-    case ECONNREFUSED:
-    case ENETUNREACH:
-      retry(sockfd);
-      break;
-
-    case EACCES:
-    case EPERM:
-    case EAFNOSUPPORT:
-    case EALREADY:
-    case EBADF:
-    case EFAULT:
-    case ENOTSOCK:
-      LOG_SYSERR << "connect error in Connector::startInLoop " << savedErrno;
-      sockets::close(sockfd);
-      break;
-
-    default:
-      LOG_SYSERR << "Unexpected error in Connector::startInLoop " << savedErrno;
-      sockets::close(sockfd);
-      // connectErrorCallback_();
-      break;
+    delete socket_;
+    socket_ = nullptr;
+    LOG_SYSFATAL << uv_strerror(err) << " in Connector::connect";
   }
+
+  err = uv_tcp_connect(req_, socket_, &serverAddr_.getSockAddr(), 
+    &Connector::onConnectCallback);
+  if (err)
+  {
+    LOG_ERROR << uv_strerror(err) << "in Connector::connect";
+    handleConnectError(err);
+  }
+}
+
+void Connector::handleConnectError( int err )
+{
+  switch (err)
+  {
+  case 0:
+  case UV_EINTR:
+  case UV_EISCONN:
+    connecting(sockfd);
+    break;
+
+  case UV_EAGAIN:
+  case UV_EADDRINUSE:
+  case UV_EADDRNOTAVAIL:
+  case UV_ECONNREFUSED:
+  case UV_ENETUNREACH:
+    retry(sockfd);
+    break;
+
+  case UV_EACCES:
+  case UV_EPERM:
+  case UV_EAFNOSUPPORT:
+  case UV_EALREADY:
+  case UV_EBADF:
+  case UV_EFAULT:
+  case UV_ENOTSOCK:
+    LOG_SYSERR << "connect error in Connector::startInLoop " << savedErrno;
+    sockets::close(sockfd);
+    break;
+
+  default:
+    LOG_SYSERR << "Unexpected error in Connector::startInLoop " << savedErrno;
+    sockets::close(sockfd);
+    // connectErrorCallback_();
+    break;
+  }
+}
+
+void Connector::onConnectCallback( uv_connect_t *req, int status )
+{
+  assert(req->data);
+  Connector *connector = static_cast<Connector*>(req->data);
+  if (status) 
+  {
+    LOG_SYSERR << uv_strerror(status) << " in Connector::onConnectCallback";
+    connector->handleConnectError(status);
+    return;
+  }
+
+
 }
 
 void Connector::restart()
@@ -225,4 +276,9 @@ void Connector::retry(int sockfd)
     LOG_DEBUG << "do not connect";
   }
 }
+
+
+
+
+
 
