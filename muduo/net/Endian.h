@@ -13,7 +13,6 @@
 
 #include <stdint.h>
 #include <muduo/base/endianness.h>
-//#include <endian.h>
 
 namespace muduo
 {
