@@ -84,6 +84,24 @@ class Socket : boost::noncopyable
   /// Enable/disable SO_KEEPALIVE
   ///
   void setKeepAlive(bool on);
+
+
+  int readStart(uv_alloc_cb allocCallback, uv_read_cb readCallback)
+  {
+    return uv_read_start(reinterpret_cast<uv_stream_t*>(socket_),
+                         allocCallback, 
+                         readCallback);
+  }
+
+  int readStop()
+  {
+    return uv_read_stop(reinterpret_cast<uv_stream_t*>(socket_));
+  }
+
+  int write(uv_write_t *req, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb writeCallback)
+  {
+    return uv_write(req, reinterpret_cast<uv_stream_t*>(socket_), bufs, nbufs, writeCallback);
+  }
   
  private:
   static void closeCallback(uv_handle_t *handle);
