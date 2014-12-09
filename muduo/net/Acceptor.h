@@ -14,7 +14,6 @@
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
 
-#include <muduo/net/Channel.h>
 #include <muduo/net/Socket.h>
 
 namespace muduo

@@ -10,7 +10,7 @@
 
 #include <muduo/base/Logging.h>
 #include <muduo/base/Mutex.h>
-#include <muduo/net/Channel.h>
+//#include <muduo/net/Channel.h>
 #include <muduo/net/Poller.h>
 #include <muduo/net/SocketsOps.h>
 #include <muduo/net/TimerQueue.h>
@@ -53,13 +53,13 @@ EventLoop* EventLoop::getEventLoopOfCurrentThread()
 EventLoop::EventLoop()
   : looping_(false),
     quit_(false),
-    eventHandling_(false),
+    //eventHandling_(false),
     callingPendingFunctors_(false),
     iteration_(0),
     threadId_(CurrentThread::tid()),
     poller_(Poller::newDefaultPoller(this)),
-    timerQueue_(new TimerQueue(this)),
-    currentActiveChannel_(NULL)
+    timerQueue_(new TimerQueue(this))
+    //currentActiveChannel_(NULL)
 {
   LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
   if (t_loopInThisThread)
@@ -306,31 +306,31 @@ void EventLoop::cancel(TimerId timerId)
   return timerQueue_->cancel(timerId);
 }
 
-void EventLoop::updateChannel(Channel* channel)
-{
-  assert(channel->ownerLoop() == this);
-  assertInLoopThread();
-  poller_->updateChannel(channel);
-}
-
-void EventLoop::removeChannel(Channel* channel)
-{
-  assert(channel->ownerLoop() == this);
-  assertInLoopThread();
-  if (eventHandling_)
-  {
-    assert(currentActiveChannel_ == channel ||
-        std::find(activeChannels_.begin(), activeChannels_.end(), channel) == activeChannels_.end());
-  }
-  poller_->removeChannel(channel);
-}
-
-bool EventLoop::hasChannel(Channel* channel)
-{
-  assert(channel->ownerLoop() == this);
-  assertInLoopThread();
-  return poller_->hasChannel(channel);
-}
+//void EventLoop::updateChannel(Channel* channel)
+//{
+//  assert(channel->ownerLoop() == this);
+//  assertInLoopThread();
+//  poller_->updateChannel(channel);
+//}
+//
+//void EventLoop::removeChannel(Channel* channel)
+//{
+//  assert(channel->ownerLoop() == this);
+//  assertInLoopThread();
+//  if (eventHandling_)
+//  {
+//    assert(currentActiveChannel_ == channel ||
+//        std::find(activeChannels_.begin(), activeChannels_.end(), channel) == activeChannels_.end());
+//  }
+//  poller_->removeChannel(channel);
+//}
+//
+//bool EventLoop::hasChannel(Channel* channel)
+//{
+//  assert(channel->ownerLoop() == this);
+//  assertInLoopThread();
+//  return poller_->hasChannel(channel);
+//}
 
 void EventLoop::abortNotInLoopThread()
 {
@@ -348,13 +348,13 @@ void EventLoop::wakeup()
   }
 }
 
-void EventLoop::printActiveChannels() const
-{
-  for (ChannelList::const_iterator it = activeChannels_.begin();
-      it != activeChannels_.end(); ++it)
-  {
-    const Channel* ch = *it;
-    LOG_TRACE << "{" << ch->reventsToString() << "} ";
-  }
-}
+//void EventLoop::printActiveChannels() const
+//{
+//  for (ChannelList::const_iterator it = activeChannels_.begin();
+//      it != activeChannels_.end(); ++it)
+//  {
+//    const Channel* ch = *it;
+//    LOG_TRACE << "{" << ch->reventsToString() << "} ";
+//  }
+//}
 

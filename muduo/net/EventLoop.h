@@ -31,7 +31,7 @@ namespace muduo
 namespace net
 {
 
-class Channel;
+//class Channel;
 class Poller;
 class TimerQueue;
 
@@ -111,9 +111,9 @@ class EventLoop : boost::noncopyable
 
   // internal usage
   void wakeup();
-  void updateChannel(Channel* channel);
-  void removeChannel(Channel* channel);
-  bool hasChannel(Channel* channel);
+  //void updateChannel(Channel* channel);
+  //void removeChannel(Channel* channel);
+  //bool hasChannel(Channel* channel);
 
   // pid_t threadId() const { return threadId_; }
   void assertInLoopThread()
@@ -125,7 +125,7 @@ class EventLoop : boost::noncopyable
   }
   bool isInLoopThread() const { return threadId_ == CurrentThread::tid(); }
   // bool callingPendingFunctors() const { return callingPendingFunctors_; }
-  bool eventHandling() const { return eventHandling_; }
+  //bool eventHandling() const { return eventHandling_; }
 
   void setContext(const boost::any& context)
   { context_ = context; }
@@ -147,13 +147,13 @@ class EventLoop : boost::noncopyable
   void abortNotInLoopThread();
   void doPendingFunctors();
 
-  void printActiveChannels() const; // DEBUG
+  //void printActiveChannels() const; // DEBUG
 
-  typedef std::vector<Channel*> ChannelList;
+  //typedef std::vector<Channel*> ChannelList;
 
   bool looping_; /* atomic */
   bool quit_; /* atomic and shared between threads, okay on x86, I guess. */
-  bool eventHandling_; /* atomic */
+  //bool eventHandling_; /* atomic */
   bool callingPendingFunctors_; /* atomic */
   uv_loop_t loop_;
 
@@ -173,9 +173,9 @@ class EventLoop : boost::noncopyable
 
   boost::any context_;
 
-  // scratch variables
-  ChannelList activeChannels_;
-  Channel* currentActiveChannel_;
+  //// scratch variables
+  //ChannelList activeChannels_;
+  //Channel* currentActiveChannel_;
 };
 
 }
