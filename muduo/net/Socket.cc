@@ -10,7 +10,6 @@
 
 #include <muduo/base/Logging.h>
 #include <muduo/net/InetAddress.h>
-#include <muduo/net/SocketsOps.h>
 
 #ifndef NATIVE_WIN32
 #include <netinet/in.h>
