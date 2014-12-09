@@ -98,22 +98,23 @@ InetAddress::InetAddress(int af, StringArg ip, uint16_t port)
                << " in InetAddress::InetAddress";
 }
 
-muduo::net::InetAddress::InetAddress( const struct sockaddr& addr )
+muduo::net::InetAddress::InetAddress( const struct sa& addr )
 {
   bzero(&addr_, sizeof addr_);
-  addr_.u.sa = addr; 
-  switch (addr.sa_family)
+  switch (addr.u.sa.sa_family)
   {
   case AF_INET:
+    addr_.u.in = addr.u.in;
     addr_.len = sizeof(addr_.u.in);
     break;
 
   case AF_INET6:
+    addr_.u.in6 = addr_.u.in6;
     addr_.len = sizeof(addr_.u.in6);
     break;
 
   default:
-    LOG_SYSERR << "No support address family:" << addr.sa_family 
+    LOG_SYSERR << "No support address family:" << addr.u.sa.sa_family 
                << " in InetAddress::InetAddress";
     break;
   }

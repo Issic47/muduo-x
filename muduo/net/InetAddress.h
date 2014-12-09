@@ -52,7 +52,7 @@ class InetAddress : public muduo::copyable
 
   /// Constructs an endpoint with given struct @c sockaddr
   /// Mostly used when accepting new connections
-  InetAddress(const struct sockaddr& addr);
+  InetAddress(const struct sa& addr);
 
   /// Constructs an endpoint with given struct @c sockaddr_in
   /// Mostly used when accepting new connections
