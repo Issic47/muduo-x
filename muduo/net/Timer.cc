@@ -18,7 +18,7 @@ namespace detail
 
 inline uint64_t convertToMillisecond(double seconds)
 {
-  return seconds * 1000;
+  return static_cast<uint64_t>(seconds * 1000);
 }
 
 } // !namespace detail
