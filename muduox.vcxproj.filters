@@ -129,6 +129,9 @@
     <ClCompile Include="muduo\net\TcpServer.cc">
       <Filter>net</Filter>
     </ClCompile>
+    <ClCompile Include="muduo\net\UdpServer.cc">
+      <Filter>net</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="muduo\base\AsyncLogging.h">
@@ -288,6 +291,9 @@
       <Filter>net</Filter>
     </ClInclude>
     <ClInclude Include="muduo\net\ZlibStream.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\UdpServer.h">
       <Filter>net</Filter>
     </ClInclude>
   </ItemGroup>
