@@ -65,6 +65,7 @@ void Acceptor::onNewConnectionCallback( uv_stream_t *server, int status )
   
   acceptor->loop_->assertInLoopThread();
 
+  // FIXME(cbj): assign a loop for the client.
   uv_tcp_t *client = new uv_tcp_t;
   int err = uv_tcp_init(acceptor->loop_->getUVLoop(), client);
   if (err)
