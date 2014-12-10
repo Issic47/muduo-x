@@ -36,6 +36,8 @@ TcpServer::TcpServer(EventLoop* loop,
 {
   acceptor_->setNewConnectionCallback(
       boost::bind(&TcpServer::newConnection, this, _1, _2));
+  acceptor_->setNextEventLoopCallback(
+      boost::bind(&TcpServer::nextEventLoop, this));
 }
 
 TcpServer::~TcpServer()
@@ -72,7 +74,7 @@ void TcpServer::start()
   }
 }
 
-void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
+void TcpServer::newConnection(uv_tcp_t *socket, const InetAddress& peerAddr)
 {
   loop_->assertInLoopThread();
   EventLoop* ioLoop = threadPool_->getNextLoop();
@@ -84,12 +86,22 @@ void TcpServer::newConnection(int sockfd, const InetAddress& peerAddr)
   LOG_INFO << "TcpServer::newConnection [" << name_
            << "] - new connection [" << connName
            << "] from " << peerAddr.toIpPort();
-  InetAddress localAddr(sockets::getLocalAddr(sockfd));
+
+  
+  sa addr;
+  int len = sizeof(addr);
+  int err = uv_tcp_getsockname(socket, &addr.u.sa, &len);
+  if (err) 
+  {
+    LOG_SYSERR << uv_strerror(err) << " in TcpServer::newConnection";
+  }
+
+  InetAddress localAddr(addr);
   // FIXME poll with zero timeout to double confirm the new connection
   // FIXME use make_shared if necessary
   TcpConnectionPtr conn(new TcpConnection(ioLoop,
                                           connName,
-                                          sockfd,
+                                          socket,
                                           localAddr,
                                           peerAddr));
   connections_[connName] = conn;

@@ -94,11 +94,13 @@ class TcpServer : boost::noncopyable
 
  private:
   /// Not thread safe, but in loop
-  void newConnection(int sockfd, const InetAddress& peerAddr);
+  void newConnection(uv_tcp_t *socket, const InetAddress& peerAddr);
   /// Thread safe.
   void removeConnection(const TcpConnectionPtr& conn);
   /// Not thread safe, but in loop
   void removeConnectionInLoop(const TcpConnectionPtr& conn);
+
+  EventLoop* nextEventLoop() { return threadPool_->getNextLoop(); }
 
   typedef std::map<string, TcpConnectionPtr> ConnectionMap;
 
