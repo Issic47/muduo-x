@@ -48,7 +48,7 @@ class TcpConnection : boost::noncopyable,
   /// User should not create this object.
   TcpConnection(EventLoop* loop,
                 const string& name,
-                int sockfd,
+                uv_tcp_t *socket,
                 const InetAddress& localAddr,
                 const InetAddress& peerAddr);
 
@@ -57,7 +57,7 @@ class TcpConnection : boost::noncopyable,
   /// User should not create this object.
   TcpConnection(EventLoop* loop,
                 const string& name,
-                uv_tcp_t *socket,
+                int sockfd,
                 const InetAddress& localAddr,
                 const InetAddress& peerAddr);
 
@@ -122,10 +122,16 @@ class TcpConnection : boost::noncopyable,
 
  private:
   enum StateE { kDisconnected, kConnecting, kConnected, kDisconnecting };
+
+  static void allocCallback(uv_handle_t *handle, size_t suggestedSize, uv_buf_t *buf);
+  static void readCallback(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
+  static void shutdownCallback(uv_shutdown_t *req, int status);
+
+  void disableReadWrite(bool closeAfterDisable);
   void handleRead(Timestamp receiveTime);
   void handleWrite();
   void handleClose();
-  void handleError();
+  void handleError(int err);
   // void sendInLoop(string&& message);
   void sendInLoop(const StringPiece& message);
   void sendInLoop(const void* message, size_t len);
@@ -151,6 +157,7 @@ class TcpConnection : boost::noncopyable,
   Buffer inputBuffer_;
   Buffer outputBuffer_; // FIXME: use list<Buffer> as output buffer.
   boost::any context_;
+  bool isClosing_;
   // FIXME: creationTime_, lastReceiveTime_
   //        bytesReceived_, bytesSent_
 };

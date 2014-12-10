@@ -39,51 +39,23 @@ void muduo::net::defaultMessageCallback(const TcpConnectionPtr&,
 
 TcpConnection::TcpConnection(EventLoop* loop,
                              const string& nameArg,
-                             int sockfd,
+                             uv_tcp_t *socket,
                              const InetAddress& localAddr,
                              const InetAddress& peerAddr)
   : loop_(CHECK_NOTNULL(loop)),
     name_(nameArg),
     state_(kConnecting),
-    socket_(new Socket(sockfd)),
-    channel_(new Channel(loop, sockfd)),
-    localAddr_(localAddr),
-    peerAddr_(peerAddr),
-    highWaterMark_(64*1024*1024)
-{
-  channel_->setReadCallback(
-      boost::bind(&TcpConnection::handleRead, this, _1));
-  channel_->setWriteCallback(
-      boost::bind(&TcpConnection::handleWrite, this));
-  channel_->setCloseCallback(
-      boost::bind(&TcpConnection::handleClose, this));
-  channel_->setErrorCallback(
-      boost::bind(&TcpConnection::handleError, this));
-  LOG_DEBUG << "TcpConnection::ctor[" <<  name_ << "] at " << this
-            << " fd=" << sockfd;
-  socket_->setKeepAlive(true);
-}
-
-TcpConnection::TcpConnection(EventLoop* loop, 
-                             const string& nameArg, 
-                             uv_tcp_t *socket, 
-                             const InetAddress& localAddr, 
-                             const InetAddress& peerAddr)
-  : loop_(CHECK_NOTNULL(loop)),
-    name_(nameArg),
-    state_(kConnecting),
     socket_(new Socket(socket)),
-    //channel_(new Channel(loop, sockfd)),
     localAddr_(localAddr),
     peerAddr_(peerAddr),
-    highWaterMark_(64*1024*1024)
+    highWaterMark_(64*1024*1024),
+    isClosing_(false)
 {
-
   LOG_DEBUG << "TcpConnection::ctor[" <<  name_ << "] at " << this
             << " fd=" << socket_->fd();
+  socket_->setData(this);
   socket_->setKeepAlive(true);
 }
-
 
 TcpConnection::~TcpConnection()
 {
@@ -167,30 +139,46 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     LOG_WARN << "disconnected, give up writing";
     return;
   }
-  // if no thing in output queue, try writing directly
-  if (!channel_->isWriting() && outputBuffer_.readableBytes() == 0)
+
+  if (socket_->getWriteQueueSize() == 0 && outputBuffer_.readableBytes() == 0) 
   {
-    nwrote = sockets::write(channel_->fd(), data, len);
+    uv_buf_t buf = uv_buf_init(
+      static_cast<char*>(const_cast<void*>(data)), 
+      len);
+    nwrote = socket_->tryWrite(&buf, 1);
     if (nwrote >= 0)
     {
       remaining = len - nwrote;
-      if (remaining == 0 && writeCompleteCallback_)
+      if (remaining == 0 && writeCompleteCallback_) 
       {
         loop_->queueInLoop(boost::bind(writeCompleteCallback_, shared_from_this()));
       }
     }
-    else // nwrote < 0
+    else if (nwrote != UV_EAGAIN)
     {
-      nwrote = 0;
-      if (errno != EWOULDBLOCK)
+      LOG_SYSERR << uv_strerror(nwrote) << " in TcpConnection::SendInLoop";
+      if (nwrote == UV_EPIPE || nwrote == UV_ECONNRESET)
       {
-        LOG_SYSERR << "TcpConnection::sendInLoop";
-        if (errno == EPIPE || errno == ECONNRESET) // FIXME: any others?
-        {
-          faultError = true;
-        }
+        faultError = true;
       }
     }
+  }
+
+  assert(remaining <= len);
+
+  if (!faultError && remaining > 0)
+  {
+    size_t oldLen = outputBuffer_.readableBytes();
+    if (oldLen + remaining >= highWaterMark_ && 
+        oldLen < highWaterMark_ && 
+        highWaterMarkCallback_)
+    {
+      loop_->queueInLoop(boost::bind(highWaterMarkCallback_, shared_from_this(), oldLen + remaining));
+    }
+    
+    outputBuffer_.append(static_cast<const char*>(data)+nwrote, remaining);
+    uv_buf_t buf = uv_buf_init(outputBuffer_.beginWrite(), remaining);
+    
   }
 
   assert(remaining <= len);
@@ -225,12 +213,36 @@ void TcpConnection::shutdown()
 void TcpConnection::shutdownInLoop()
 {
   loop_->assertInLoopThread();
-  if (!channel_->isWriting())
+
+  uv_shutdown_t *req = new uv_shutdown_t;
+  req->data = this;
+  isClosing_ = false;
+  // we are not writing
+  socket_->shutdownWrite(req, &TcpConnection::shutdownCallback);
+}
+
+void TcpConnection::shutdownCallback( uv_shutdown_t *req, int status )
+{
+  assert(req->data);
+  TcpConnection *connect = reinterpret_cast<TcpConnection*>(req->data);
+  delete req;
+
+  if (status) 
   {
-    // we are not writing
-    socket_->shutdownWrite();
+    LOG_SYSERR << uv_strerror(status) << " in TcpConnection::shutdownCallback";
+    // FIXME(cbj): return?
+    //return;
+  }
+
+  if (connect->isClosing_)
+  {
+    TcpConnectionPtr guardThis(connect->shared_from_this());
+    connect->connectionCallback_(guardThis);
+    // must be the last line
+    connect->closeCallback_(guardThis);
   }
 }
+
 
 // void TcpConnection::shutdownAndForceCloseAfter(double seconds)
 // {
@@ -298,10 +310,79 @@ void TcpConnection::connectEstablished()
   loop_->assertInLoopThread();
   assert(state_ == kConnecting);
   setState(kConnected);
-  channel_->tie(shared_from_this());
-  channel_->enableReading();
+
+  
+  socket_->setData(this);
+  int err = socket_->readStart(&TcpConnection::allocCallback,
+                               &TcpConnection::readCallback);
+  if (err) 
+  {
+    LOG_SYSERR << uv_strerror(err) << " in TcpConnection::connectEstablished";
+  }
 
   connectionCallback_(shared_from_this());
+}
+
+void TcpConnection::allocCallback( uv_handle_t *handle, size_t suggestedSize, uv_buf_t *buf )
+{
+  assert(handle->data);
+  TcpConnection *connetion = static_cast<TcpConnection*>(handle->data);
+  connetion->inputBuffer_.ensureWritableBytes(suggestedSize);
+  buf->base = connetion->inputBuffer_.beginWrite();
+  buf->len = suggestedSize;
+}
+
+void TcpConnection::readCallback( uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf )
+{
+  assert(handle->data);
+  TcpConnection *connection = static_cast<TcpConnection*>(handle->data);
+  if (nread < 0)
+  {
+    LOG_DEBUG << uv_strerror(nread);
+    if (nread == UV_EOF || nread == UV_ECONNRESET)
+    {
+      connection->handleClose();
+    } 
+    else 
+    {
+      LOG_SYSERR << uv_strerror(nread) << " in TcpConnection::readCallback";
+      connection->handleError(nread);
+    }
+  }
+  else if (nread > 0)
+  {
+    connection->inputBuffer_.hasWritten(nread);
+    connection->messageCallback_(
+      connection->shared_from_this(),
+      &connection->inputBuffer_, 
+      connection->loop_->pollReturnTime());
+  }
+
+}
+
+void TcpConnection::handleClose()
+{
+  loop_->assertInLoopThread();
+  LOG_TRACE << "fd = " << socket_->fd() << " state = " << state_;
+  assert(state_ == kConnected || state_ == kDisconnecting);
+  // we don't close fd, leave it to dtor, so we can find leaks easily.
+  setState(kDisconnected);
+
+  disableReadWrite(true);
+}
+
+void muduo::net::TcpConnection::disableReadWrite(bool closeAfterDisable)
+{
+  int err = socket_->readStop();
+  if (err)
+  {
+    LOG_ERROR << uv_strerror(err) << " in TcpConnection::disableReadWrite";
+  }
+
+  uv_shutdown_t *req = new uv_shutdown_t;
+  req->data = this;
+  isClosing_ = closeAfterDisable;
+  socket_->shutdownWrite(req, &TcpConnection::shutdownCallback);
 }
 
 void TcpConnection::connectDestroyed()
@@ -310,31 +391,10 @@ void TcpConnection::connectDestroyed()
   if (state_ == kConnected)
   {
     setState(kDisconnected);
-    channel_->disableAll();
+
+    disableReadWrite(false);
 
     connectionCallback_(shared_from_this());
-  }
-  channel_->remove();
-}
-
-void TcpConnection::handleRead(Timestamp receiveTime)
-{
-  loop_->assertInLoopThread();
-  int savedErrno = 0;
-  ssize_t n = inputBuffer_.readFd(channel_->fd(), &savedErrno);
-  if (n > 0)
-  {
-    messageCallback_(shared_from_this(), &inputBuffer_, receiveTime);
-  }
-  else if (n == 0)
-  {
-    handleClose();
-  }
-  else
-  {
-    errno = savedErrno;
-    LOG_SYSERR << "TcpConnection::handleRead";
-    handleError();
   }
 }
 
@@ -378,26 +438,14 @@ void TcpConnection::handleWrite()
   }
 }
 
-void TcpConnection::handleClose()
-{
-  loop_->assertInLoopThread();
-  LOG_TRACE << "fd = " << channel_->fd() << " state = " << state_;
-  assert(state_ == kConnected || state_ == kDisconnecting);
-  // we don't close fd, leave it to dtor, so we can find leaks easily.
-  setState(kDisconnected);
-  channel_->disableAll();
 
-  TcpConnectionPtr guardThis(shared_from_this());
-  connectionCallback_(guardThis);
-  // must be the last line
-  closeCallback_(guardThis);
-}
 
-void TcpConnection::handleError()
+void TcpConnection::handleError(int err)
 {
-  int err = sockets::getSocketError(channel_->fd());
+  //int err = sockets::getSocketError(channel_->fd());
   LOG_ERROR << "TcpConnection::handleError [" << name_
-            << "] - SO_ERROR = " << err << " " << strerror_tl(err);
+            << "] - SO_ERROR = " << uv_err_name(err) << " " << strerror_tl(err);
 }
+
 
 
