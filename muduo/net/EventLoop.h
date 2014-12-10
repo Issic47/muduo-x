@@ -25,6 +25,7 @@
 #include <muduo/net/TimerId.h>
 
 #include <uv.h>
+#include <atomic>
 
 namespace muduo
 {
@@ -138,6 +139,10 @@ class EventLoop : boost::noncopyable
   boost::any* getMutableContext()
   { return &context_; }
 
+  // WARNING: the caller should release the socket
+  uv_tcp_t* getFreeSocket();
+  void closeSocketAndRelease(uv_tcp_t *socket);
+
   static EventLoop* getEventLoopOfCurrentThread();
 
  private:
@@ -148,6 +153,7 @@ class EventLoop : boost::noncopyable
 
   void abortNotInLoopThread();
   void doPendingFunctors();
+  void createFreeSocket();
 
   //void printActiveChannels() const; // DEBUG
 
@@ -173,8 +179,10 @@ class EventLoop : boost::noncopyable
   uint64_t initLoopTime_;
   Timestamp initTimeStamp_;
 
-  boost::scoped_ptr<Poller> poller_;
+  //boost::scoped_ptr<Poller> poller_;
   boost::scoped_ptr<TimerQueue> timerQueue_;
+
+  std::atomic<uv_tcp_t*> freeSocket_;
 
   boost::any context_;
 

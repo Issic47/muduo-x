@@ -11,8 +11,7 @@
 #include <muduo/base/Logging.h>
 #include <muduo/base/Mutex.h>
 //#include <muduo/net/Channel.h>
-#include <muduo/net/Poller.h>
-#include <muduo/net/SocketsOps.h>
+//#include <muduo/net/Poller.h>
 #include <muduo/net/TimerQueue.h>
 
 #include <boost/bind.hpp>
@@ -57,9 +56,10 @@ EventLoop::EventLoop()
     callingPendingFunctors_(false),
     iteration_(0),
     threadId_(CurrentThread::tid()),
-    poller_(Poller::newDefaultPoller(this)),
+    //poller_(Poller::newDefaultPoller(this)),
     timerQueue_(new TimerQueue(this)),
-    initLoopTime_(0)
+    initLoopTime_(0),
+    freeSocket_(new uv_tcp_t)
     //currentActiveChannel_(NULL)
 {
   LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
@@ -98,6 +98,9 @@ EventLoop::EventLoop()
     if (err) break;
     async_handle_.data = this;
 
+    err = uv_tcp_init(&loop_, freeSocket_);
+    if (err) break;
+
   } while (false);
   
   if (err) 
@@ -112,8 +115,15 @@ EventLoop::~EventLoop()
   LOG_DEBUG << "EventLoop " << this << " of thread " << threadId_
             << " destructs in thread " << CurrentThread::tid();
 
+  uv_tcp_t *socket = freeSocket_.exchange(nullptr);
+
   uv_walk(&loop_, &EventLoop::closeWalkCallback, NULL);
   uv_run(&loop_, UV_RUN_DEFAULT);
+
+  if (socket)
+  {
+    delete socket; // release socket
+  }
 
   int err = uv_loop_close(&loop_);
   if (err) 
@@ -124,28 +134,28 @@ EventLoop::~EventLoop()
   t_loopInThisThread = NULL;
 }
 
-void muduo::net::EventLoop::loopPrepareCallback( uv_prepare_t *handle )
+void EventLoop::loopPrepareCallback( uv_prepare_t *handle )
 {
   assert(handle->data);
   EventLoop *loop = static_cast<EventLoop*>(handle->data);
   ++loop->iteration_;
 }
 
-void muduo::net::EventLoop::loopCheckCallback( uv_check_t *handle )
+void EventLoop::loopCheckCallback( uv_check_t *handle )
 {
   assert(handle->data);
   EventLoop *loop = static_cast<EventLoop*>(handle->data);
   loop->doPendingFunctors();
 }
 
-void muduo::net::EventLoop::loopAsyncCallback( uv_async_t *handle )
+void EventLoop::loopAsyncCallback( uv_async_t *handle )
 {
   assert(handle->data);
   EventLoop *loop = static_cast<EventLoop*>(handle->data);
   LOG_TRACE << "EventLoop " << loop << " is wakeup";
 }
 
-void muduo::net::EventLoop::closeWalkCallback(uv_handle_t *handle, void *arg)
+void EventLoop::closeWalkCallback(uv_handle_t *handle, void *arg)
 {
   if (!uv_is_closing(handle))
     uv_close(handle, NULL);
@@ -363,3 +373,31 @@ void EventLoop::wakeup()
 //  }
 //}
 
+uv_tcp_t* EventLoop::getFreeSocket()
+{
+  uv_tcp_t *tmp = freeSocket_.exchange(nullptr);
+  runInLoop(boost::bind(&EventLoop::createFreeSocket, this));
+  return tmp;
+}
+
+void EventLoop::createFreeSocket()
+{
+  assertInLoopThread();
+
+  if (!freeSocket_.load())
+  {
+    uv_tcp_t *newSocket = new uv_tcp_t;
+    int err = uv_tcp_init(&loop_, newSocket);
+    if (err)
+    {
+      LOG_SYSERR << uv_strerror(err) << " in EventLoop::createFreeSocket";
+      return;
+    }
+    freeSocket_.exchange(newSocket);
+  }
+}
+
+void muduo::net::EventLoop::closeSocketAndRelease( uv_tcp_t *socket )
+{
+  // TODO: uv_close and release socket
+}
