@@ -58,7 +58,8 @@ EventLoop::EventLoop()
     iteration_(0),
     threadId_(CurrentThread::tid()),
     poller_(Poller::newDefaultPoller(this)),
-    timerQueue_(new TimerQueue(this))
+    timerQueue_(new TimerQueue(this)),
+    initLoopTime_(0)
     //currentActiveChannel_(NULL)
 {
   LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
@@ -174,6 +175,10 @@ void EventLoop::loop()
   looping_ = true;
   quit_ = false;  // FIXME: what if someone calls quit() before loop() ?
   LOG_TRACE << "EventLoop " << this << " start looping";
+
+  uv_update_time(&loop_);
+  initTimeStamp_ = Timestamp::now();
+  initLoopTime_ = uv_now(&loop_);
 
   uv_run(&loop_, UV_RUN_DEFAULT);
 

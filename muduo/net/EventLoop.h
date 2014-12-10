@@ -63,7 +63,9 @@ class EventLoop : boost::noncopyable
   ///
   /// Time when poll returns, usually means data arrival.
   ///
-  Timestamp pollReturnTime() const { return pollReturnTime_; }
+  Timestamp pollReturnTime() const {
+    return addTime(initTimeStamp_, uv_now(&loop_) * 1000.0);
+  }
 
   int64_t iteration() const { return iteration_; }
 
@@ -167,7 +169,10 @@ class EventLoop : boost::noncopyable
   uv_async_t async_handle_; // for wakeup the loop
   
   const pid_t threadId_;
-  Timestamp pollReturnTime_;
+
+  uint64_t initLoopTime_;
+  Timestamp initTimeStamp_;
+
   boost::scoped_ptr<Poller> poller_;
   boost::scoped_ptr<TimerQueue> timerQueue_;
 
