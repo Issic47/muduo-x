@@ -57,10 +57,10 @@ class Connector : boost::noncopyable,
   void startInLoop();
   void stopInLoop();
   void connect();
-  void connecting(int sockfd);
+  void connecting();
   void handleWrite();
   void handleError();
-  void retry(int sockfd);
+  void retry();
   int removeAndResetChannel();
   void resetChannel();
   void handleConnectError(int err);
