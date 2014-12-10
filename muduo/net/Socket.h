@@ -102,6 +102,20 @@ class Socket : boost::noncopyable
   {
     return uv_write(req, reinterpret_cast<uv_stream_t*>(socket_), bufs, nbufs, writeCallback);
   }
+
+  int tryWrite(const uv_buf_t bufs[], unsigned int nbufs) 
+  {
+    return uv_try_write(reinterpret_cast<uv_stream_t*>(socket_), bufs, nbufs);
+  }
+
+  void setData(void *data)
+  {
+    socket_->data = data;
+  }
+
+  size_t getWriteQueueSize() const {
+    return socket_->write_queue_size;
+  }
   
  private:
   static void closeCallback(uv_handle_t *handle);
