@@ -33,11 +33,15 @@ class Acceptor : boost::noncopyable
   typedef boost::function<void (uv_tcp_t*,
                                 const InetAddress&)> NewConnectionCallback;
 
+  typedef boost::function<EventLoop*()> NextEventLoopCallback;
+
   Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reuseport);
   ~Acceptor();
 
   void setNewConnectionCallback(const NewConnectionCallback& cb)
   { newConnectionCallback_ = cb; }
+
+  EventLoop* setNextEventLoopCallback(const NextEventLoopCallback &cb);
 
   bool listenning() const { return listenning_; }
   void listen();
@@ -51,6 +55,7 @@ class Acceptor : boost::noncopyable
   uv_tcp_t *uvSocket_;
   Socket acceptSocket_;
   NewConnectionCallback newConnectionCallback_;
+  NextEventLoopCallback nextEventLoopCallback_;
   bool listenning_;
 };
 

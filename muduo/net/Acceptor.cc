@@ -65,17 +65,26 @@ void Acceptor::onNewConnectionCallback( uv_stream_t *server, int status )
   
   acceptor->loop_->assertInLoopThread();
 
-  // FIXME(cbj): assign a loop for the client.
-  uv_tcp_t *client = new uv_tcp_t;
-  int err = uv_tcp_init(acceptor->loop_->getUVLoop(), client);
-  if (err)
-    LOG_SYSFATAL << uv_strerror(err) << " in Acceptor::onNewConnectionCallback";
+  EventLoop *nextEventLoop = acceptor->loop_;
+  if (acceptor->nextEventLoopCallback_)
+  {
+    nextEventLoop = acceptor->nextEventLoopCallback_();
+    assert(nextEventLoop);
+  }
+
+  uv_tcp_t *client = nextEventLoop->getFreeSocket();
+  if (nullptr == client) 
+  {
+    LOG_ERROR << "Cannot get free socket in Acceptor::onNewConnectionCallback";
+    return;
+  }
 
   InetAddress peerAddr;
-  err = acceptor->acceptSocket_.accept(client, &peerAddr);
+  int err = acceptor->acceptSocket_.accept(client, &peerAddr);
   if (err)
   {
     LOG_SYSERR << uv_strerror(err) << " in Acceptor::onNewConnectionCallback";
+    // FIXME(cbj): should call uv_close before delete
     delete client; // TODO: use free list
   } 
   else 
