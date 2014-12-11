@@ -10,14 +10,92 @@
 
 #include <muduo/base/Logging.h>
 #include <muduo/base/WeakCallback.h>
-#include <muduo/net/Channel.h>
 #include <muduo/net/EventLoop.h>
 #include <muduo/net/Socket.h>
-#include <muduo/net/SocketsOps.h>
 
 #include <boost/bind.hpp>
 
-#include <errno.h>
+#include <list>
+
+namespace muduo
+{
+namespace net
+{
+
+class OutputBufferManager : boost::noncopyable
+{
+ public:
+  typedef std::list<Buffer> BufferList;
+
+  OutputBufferManager()
+    : readableBytes_(0)
+  {
+    outputBuffers_.push_back(Buffer());
+    writeBuffer_ = outputBuffers_.begin();
+    readBuffer_ = outputBuffers_.begin();
+  }
+
+  size_t readableBytes() const { return readableBytes_; }
+
+  char* append(const void *data, size_t len) 
+  {
+    char* beginWrite = nullptr;
+    BufferList::iterator avaliableBuffer = findAvaliableBuffer(len);
+    (*avaliableBuffer).ensureWritableBytes(len);
+    beginWrite = (*avaliableBuffer).beginWrite();
+    (*avaliableBuffer).append(data, len);
+    writeBuffer_ = avaliableBuffer;
+    readableBytes_ += len;
+    return beginWrite;
+  }
+
+  void retrieve(size_t len)
+  {
+    (*readBuffer_).retrieve(len);
+    if ((*readBuffer_).readableBytes() == 0)
+    {
+      readBuffer_ = next(readBuffer_);
+    }
+    readableBytes_ -= len;
+  }
+
+ private:
+  BufferList::iterator findAvaliableBuffer(size_t len) 
+  {
+    if ((*writeBuffer_).writableBytes() >= len || 
+        (*writeBuffer_).readableBytes() == 0)
+    {
+      return writeBuffer_;
+    }
+    BufferList::iterator nextWriteBuffer = next(writeBuffer_);
+    if ((*nextWriteBuffer).readableBytes() == 0)
+    {
+      return nextWriteBuffer;
+    }
+    else
+    {
+      return outputBuffers_.insert(nextWriteBuffer, Buffer(len));
+    }
+  }
+
+  BufferList::iterator next(BufferList::iterator it)
+  {
+    BufferList::iterator nextIt = ++it;
+    return nextIt == outputBuffers_.end() ? outputBuffers_.begin() : nextIt;
+  }
+
+ private:
+  BufferList::iterator readBuffer_;
+  BufferList::iterator writeBuffer_;
+
+  size_t readableBytes_;
+  BufferList outputBuffers_;
+  
+};
+
+} // namespace net
+} // namespace muduo
+
 
 using namespace muduo;
 using namespace muduo::net;
@@ -48,7 +126,8 @@ TcpConnection::TcpConnection(const string& nameArg,
     localAddr_(localAddr),
     peerAddr_(peerAddr),
     highWaterMark_(64*1024*1024),
-    isClosing_(false)
+    isClosing_(false),
+    outputBufferManager_(new OutputBufferManager)
 {
   assert(socket->loop);
   assert(socket->loop->data);
@@ -143,7 +222,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     return;
   }
 
-  if (socket_->getWriteQueueSize() == 0 && outputBuffer_.readableBytes() == 0) 
+  if (socket_->getWriteQueueSize() == 0 && outputBufferManager_->readableBytes() == 0) 
   {
     uv_buf_t buf = uv_buf_init(
       static_cast<char*>(const_cast<void*>(data)), 
@@ -171,7 +250,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
 
   if (!faultError && remaining > 0)
   {
-    size_t oldLen = outputBuffer_.readableBytes();
+    size_t oldLen = outputBufferManager_->readableBytes();
     if (oldLen + remaining >= highWaterMark_ && 
         oldLen < highWaterMark_ && 
         highWaterMarkCallback_)
@@ -179,25 +258,50 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
       loop_->queueInLoop(boost::bind(highWaterMarkCallback_, shared_from_this(), oldLen + remaining));
     }
     
-    outputBuffer_.append(static_cast<const char*>(data)+nwrote, remaining);
-    uv_buf_t buf = uv_buf_init(outputBuffer_.beginWrite(), remaining);
-    
-  }
-
-  assert(remaining <= len);
-  if (!faultError && remaining > 0)
-  {
-    size_t oldLen = outputBuffer_.readableBytes();
-    if (oldLen + remaining >= highWaterMark_
-        && oldLen < highWaterMark_
-        && highWaterMarkCallback_)
+    WriteRequest *writeReq = getFreeWriteReq();
+    writeReq->req.data = writeReq;
+    writeReq->conn = shared_from_this();
+    writeReq->buf = uv_buf_init(
+      outputBufferManager_->append(static_cast<const char*>(data)+nwrote, remaining),
+      remaining);
+    int err = socket_->write(&writeReq->req, &writeReq->buf, 1, &TcpConnection::writeCallback);
+    if (err)
     {
-      loop_->queueInLoop(boost::bind(highWaterMarkCallback_, shared_from_this(), oldLen + remaining));
+      LOG_SYSFATAL << uv_strerror(err) << " in TcpConnection::sendInLoop";
     }
-    outputBuffer_.append(static_cast<const char*>(data)+nwrote, remaining);
-    if (!channel_->isWriting())
+  }
+}
+
+
+void TcpConnection::writeCallback( uv_write_t *handle, int status )
+{
+  if (status)
+  {
+    LOG_SYSERR << uv_strerror(status) << " in TcpConnection::writeCallback";
+  }
+  else
+  {
+    assert(handle->data);
+    WriteRequest *writeReq = static_cast<WriteRequest*>(handle->data);
+    TcpConnectionPtr conn = writeReq->conn.lock();
+    if (conn)
     {
-      channel_->enableWriting();
+      conn->outputBufferManager_->retrieve(writeReq->buf.len);
+      conn->collectFreeWriteReq(writeReq);
+      if (conn->writeCompleteCallback_)
+      {
+        conn->loop_->queueInLoop(boost::bind(conn->writeCompleteCallback_, conn));
+      }
+      // FIXME(cbj): disconnecting?
+      if (conn->state_ == kDisconnecting)
+      {
+        conn->shutdownInLoop();
+      }
+    }
+    else
+    {
+      LOG_WARN << "TcpConnection has been destructed before writeCallback";
+      delete writeReq;
     }
   }
 }
@@ -374,7 +478,7 @@ void TcpConnection::handleClose()
   disableReadWrite(true);
 }
 
-void muduo::net::TcpConnection::disableReadWrite(bool closeAfterDisable)
+void TcpConnection::disableReadWrite(bool closeAfterDisable)
 {
   int err = socket_->readStop();
   if (err)
@@ -401,54 +505,9 @@ void TcpConnection::connectDestroyed()
   }
 }
 
-void TcpConnection::handleWrite()
-{
-  loop_->assertInLoopThread();
-  if (channel_->isWriting())
-  {
-    ssize_t n = sockets::write(channel_->fd(),
-                               outputBuffer_.peek(),
-                               outputBuffer_.readableBytes());
-    if (n > 0)
-    {
-      outputBuffer_.retrieve(n);
-      if (outputBuffer_.readableBytes() == 0)
-      {
-        channel_->disableWriting();
-        if (writeCompleteCallback_)
-        {
-          loop_->queueInLoop(boost::bind(writeCompleteCallback_, shared_from_this()));
-        }
-        if (state_ == kDisconnecting)
-        {
-          shutdownInLoop();
-        }
-      }
-    }
-    else
-    {
-      LOG_SYSERR << "TcpConnection::handleWrite";
-      // if (state_ == kDisconnecting)
-      // {
-      //   shutdownInLoop();
-      // }
-    }
-  }
-  else
-  {
-    LOG_TRACE << "Connection fd = " << channel_->fd()
-              << " is down, no more writing";
-  }
-}
-
-
-
 void TcpConnection::handleError(int err)
 {
   //int err = sockets::getSocketError(channel_->fd());
   LOG_ERROR << "TcpConnection::handleError [" << name_
-            << "] - SO_ERROR = " << uv_err_name(err) << " " << strerror_tl(err);
+            << "] - SO_ERROR = " << uv_err_name(err) << " " << uv_strerror(err);
 }
-
-
-

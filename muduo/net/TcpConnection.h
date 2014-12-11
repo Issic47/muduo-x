@@ -23,6 +23,8 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include <list>
+
 // struct tcp_info is in <netinet/tcp.h>
 struct tcp_info;
 
@@ -31,9 +33,9 @@ namespace muduo
 namespace net
 {
 
-class Channel;
 class EventLoop;
 class Socket;
+class OutputBufferManager;
 
 ///
 /// TCP connection, for both client and server usage.
@@ -107,8 +109,8 @@ class TcpConnection : boost::noncopyable,
   Buffer* inputBuffer()
   { return &inputBuffer_; }
 
-  Buffer* outputBuffer()
-  { return &outputBuffer_; }
+  //Buffer* outputBuffer()
+  //{ return &outputBuffer_; }
 
   /// Internal use only.
   void setCloseCallback(const CloseCallback& cb)
@@ -122,13 +124,20 @@ class TcpConnection : boost::noncopyable,
  private:
   enum StateE { kDisconnected, kConnecting, kConnected, kDisconnecting };
 
+  typedef struct WriteRequest 
+  {
+    boost::weak_ptr<TcpConnection> conn;
+    uv_write_t req;
+    uv_buf_t buf;
+  } WriteRequest;
+
   static void allocCallback(uv_handle_t *handle, size_t suggestedSize, uv_buf_t *buf);
   static void readCallback(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
+  static void writeCallback(uv_write_t *handle, int status);
   static void shutdownCallback(uv_shutdown_t *req, int status);
 
   void disableReadWrite(bool closeAfterDisable);
   void handleRead(Timestamp receiveTime);
-  void handleWrite();
   void handleClose();
   void handleError(int err);
   // void sendInLoop(string&& message);
@@ -137,6 +146,10 @@ class TcpConnection : boost::noncopyable,
   void shutdownInLoop();
   // void shutdownAndForceCloseInLoop(double seconds);
   void forceCloseInLoop();
+  
+  inline WriteRequest* getFreeWriteReq();
+  inline void collectFreeWriteReq(WriteRequest *req);
+
   void setState(StateE s) { state_ = s; }
 
   EventLoop* loop_;
@@ -144,7 +157,6 @@ class TcpConnection : boost::noncopyable,
   StateE state_;  // FIXME: use atomic variable
   // we don't expose those classes to client.
   boost::scoped_ptr<Socket> socket_;
-  boost::scoped_ptr<Channel> channel_;
   const InetAddress localAddr_;
   const InetAddress peerAddr_;
   ConnectionCallback connectionCallback_;
@@ -154,7 +166,8 @@ class TcpConnection : boost::noncopyable,
   CloseCallback closeCallback_;
   size_t highWaterMark_;
   Buffer inputBuffer_;
-  Buffer outputBuffer_; // FIXME: use list<Buffer> as output buffer.
+  std::list<WriteRequest*> freeWriteReqList_;
+  boost::scoped_ptr<OutputBufferManager> outputBufferManager_;
   boost::any context_;
   bool isClosing_;
   // FIXME: creationTime_, lastReceiveTime_
@@ -162,6 +175,23 @@ class TcpConnection : boost::noncopyable,
 };
 
 typedef boost::shared_ptr<TcpConnection> TcpConnectionPtr;
+
+
+TcpConnection::WriteRequest* TcpConnection::getFreeWriteReq()
+{
+  if (!freeWriteReqList_.empty()) 
+  {
+    WriteRequest *req = freeWriteReqList_.front();
+    freeWriteReqList_.pop_front();
+    return req;
+  }
+  return new WriteRequest;
+}
+
+void TcpConnection::collectFreeWriteReq( WriteRequest *req )
+{
+  freeWriteReqList_.push_back(req);
+}
 
 }
 }
