@@ -100,7 +100,7 @@ class TcpServer : boost::noncopyable
   /// Not thread safe, but in loop
   void removeConnectionInLoop(const TcpConnectionPtr& conn);
 
-  EventLoop* nextEventLoop() { return threadPool_->getNextLoop(); }
+  EventLoop* nextEventLoop();
 
   typedef std::map<string, TcpConnectionPtr> ConnectionMap;
 

@@ -133,3 +133,7 @@ void TcpServer::removeConnectionInLoop(const TcpConnectionPtr& conn)
       boost::bind(&TcpConnection::connectDestroyed, conn));
 }
 
+EventLoop* muduo::net::TcpServer::nextEventLoop()
+{
+  return threadPool_->getNextLoop();
+}
