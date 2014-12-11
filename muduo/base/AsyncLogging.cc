@@ -87,7 +87,7 @@ void AsyncLogging::threadFunc()
     if (buffersToWrite.size() > 25)
     {
       char buf[256];
-      snprintf(buf, sizeof buf, "Dropped log messages at %s, %zd larger buffers\n",
+      snprintf(buf, sizeof buf, "Dropped log messages at %s, " SSIZET_FMT " larger buffers\n",
                Timestamp::now().toFormattedString().c_str(),
                buffersToWrite.size()-2);
       fputs(buf, stderr);
