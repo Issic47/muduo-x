@@ -37,20 +37,22 @@ void muduo::net::defaultMessageCallback(const TcpConnectionPtr&,
   buf->retrieveAll();
 }
 
-TcpConnection::TcpConnection(EventLoop* loop,
-                             const string& nameArg,
+TcpConnection::TcpConnection(const string& nameArg,
                              uv_tcp_t *socket,
                              const InetAddress& localAddr,
                              const InetAddress& peerAddr)
-  : loop_(CHECK_NOTNULL(loop)),
+  : loop_(nullptr),
     name_(nameArg),
     state_(kConnecting),
-    socket_(new Socket(socket)),
+    socket_(new Socket(CHECK_NOTNULL(socket))),
     localAddr_(localAddr),
     peerAddr_(peerAddr),
     highWaterMark_(64*1024*1024),
     isClosing_(false)
 {
+  assert(socket->loop);
+  assert(socket->loop->data);
+  loop_ = static_cast<EventLoop*>(socket->loop->data);
   LOG_DEBUG << "TcpConnection::ctor[" <<  name_ << "] at " << this
             << " fd=" << socket_->fd();
   socket_->setData(this);
@@ -63,6 +65,7 @@ TcpConnection::~TcpConnection()
             << " fd=" << socket_->fd()
             << " state=" << state_;
   assert(state_ == kDisconnected);
+  loop_->closeSocketInLoop(socket_->socket());
 }
 
 bool TcpConnection::getTcpInfo(struct tcp_info* tcpi) const

@@ -139,9 +139,8 @@ class EventLoop : boost::noncopyable
   boost::any* getMutableContext()
   { return &context_; }
 
-  // WARNING: the caller should release the socket
   uv_tcp_t* getFreeSocket();
-  void closeSocketAndRelease(uv_tcp_t *socket);
+  void closeSocketInLoop(uv_tcp_t *socket);
 
   static EventLoop* getEventLoopOfCurrentThread();
 
@@ -150,10 +149,13 @@ class EventLoop : boost::noncopyable
   static void loopCheckCallback(uv_check_t *handle);
   static void loopAsyncCallback(uv_async_t *handle);
   static void closeWalkCallback(uv_handle_t *handle, void *arg);
+  static void closeCallback(uv_handle_t *handle);
 
   void abortNotInLoopThread();
   void doPendingFunctors();
+
   void createFreeSocket();
+  void closeSocket(uv_tcp_t *socket);
 
   //void printActiveChannels() const; // DEBUG
 

@@ -26,6 +26,7 @@ namespace net
 {
 
 class InetAddress;
+class EventLoop;
 
 ///
 /// Wrapper of socket file descriptor.
@@ -43,6 +44,7 @@ class Socket : boost::noncopyable
   ~Socket();
 
   uv_os_sock_t fd() const;
+  uv_tcp_t* socket() const { return socket_; }
 
   // return true if success.
   bool getTcpInfo(struct tcp_info*) const;
@@ -86,6 +88,14 @@ class Socket : boost::noncopyable
   void setKeepAlive(bool on);
 
 
+  void setData(void *data) { socket_->data = data; }
+
+  void* getData() { return socket_->data; }
+
+  uv_loop_t* GetUVLoop() const { return socket_->loop; }
+
+  size_t getWriteQueueSize() const { return socket_->write_queue_size; }
+
   int readStart(uv_alloc_cb allocCallback, uv_read_cb readCallback)
   {
     return uv_read_start(reinterpret_cast<uv_stream_t*>(socket_),
@@ -107,21 +117,9 @@ class Socket : boost::noncopyable
   {
     return uv_try_write(reinterpret_cast<uv_stream_t*>(socket_), bufs, nbufs);
   }
-
-  void setData(void *data)
-  {
-    socket_->data = data;
-  }
-
-  size_t getWriteQueueSize() const {
-    return socket_->write_queue_size;
-  }
   
  private:
-  static void closeCallback(uv_handle_t *handle);
-
   uv_tcp_t *socket_;
-  
 };
 
 }

@@ -29,16 +29,6 @@ Socket::Socket( uv_tcp_t *socket )
 
 Socket::~Socket()
 {
-  if (socket_)
-  {
-    uv_close(reinterpret_cast<uv_handle_t*>(socket_), &Socket::closeCallback);
-  }
-}
-
-void Socket::closeCallback( uv_handle_t *handle )
-{
-  assert(uv_is_closing(handle));
-  delete handle;
 }
 
 uv_os_sock_t Socket::fd() const

@@ -77,7 +77,9 @@ void TcpServer::start()
 void TcpServer::newConnection(uv_tcp_t *socket, const InetAddress& peerAddr)
 {
   loop_->assertInLoopThread();
-  EventLoop* ioLoop = threadPool_->getNextLoop();
+  assert(socket->loop);
+  assert(socket->loop->data);
+  EventLoop* ioLoop = static_cast<EventLoop*>(socket->loop->data);
   char buf[32];
   snprintf(buf, sizeof buf, ":%s#%d", hostport_.c_str(), nextConnId_);
   ++nextConnId_;
@@ -99,8 +101,7 @@ void TcpServer::newConnection(uv_tcp_t *socket, const InetAddress& peerAddr)
   InetAddress localAddr(addr);
   // FIXME poll with zero timeout to double confirm the new connection
   // FIXME use make_shared if necessary
-  TcpConnectionPtr conn(new TcpConnection(ioLoop,
-                                          connName,
+  TcpConnectionPtr conn(new TcpConnection(connName,
                                           socket,
                                           localAddr,
                                           peerAddr));

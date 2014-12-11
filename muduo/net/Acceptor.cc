@@ -17,13 +17,10 @@ using namespace muduo::net;
 
 Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reuseport)
   : loop_(loop),
-    uvSocket_(new uv_tcp_t),
-    acceptSocket_(uvSocket_),
+    acceptSocket_(CHECK_NOTNULL(loop_->getFreeSocket())),
     listenning_(false)
 { 
-  int err = uv_tcp_init(loop_->getUVLoop(), uvSocket_);
-  if (err)
-    LOG_SYSFATAL << uv_strerror(err);
+  acceptSocket_.setData(this);
 
 #ifndef NATIVE_WIN32
   acceptSocket_.setReuseAddr(true);
@@ -34,21 +31,13 @@ Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reusepor
 
 Acceptor::~Acceptor()
 {
-  uv_close(reinterpret_cast<uv_handle_t*>(uvSocket_), 
-    &Acceptor::onHandleCloseCallback);
-}
-
-void Acceptor::onHandleCloseCallback( uv_handle_t *handle )
-{
-  assert(uv_is_closing(handle));
-  delete handle;
+  loop_->closeSocketInLoop(acceptSocket_.socket());
 }
 
 void Acceptor::listen()
 {
   loop_->assertInLoopThread();
   listenning_ = true;
-  uvSocket_->data = this;
   acceptSocket_.listen(&Acceptor::onNewConnectionCallback);
 }
 
@@ -84,8 +73,7 @@ void Acceptor::onNewConnectionCallback( uv_stream_t *server, int status )
   if (err)
   {
     LOG_SYSERR << uv_strerror(err) << " in Acceptor::onNewConnectionCallback";
-    // FIXME(cbj): should call uv_close before delete
-    delete client; // TODO: use free list
+    nextEventLoop->closeSocketInLoop(client);
   } 
   else 
   {
@@ -95,8 +83,7 @@ void Acceptor::onNewConnectionCallback( uv_stream_t *server, int status )
     }
     else
     {
-      uv_close(reinterpret_cast<uv_handle_t*>(client),
-        &Acceptor::onHandleCloseCallback);
+      nextEventLoop->closeSocketInLoop(client);
     }
   }
 }

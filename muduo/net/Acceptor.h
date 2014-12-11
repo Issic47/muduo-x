@@ -48,11 +48,8 @@ class Acceptor : boost::noncopyable
 
  private:
   static void onNewConnectionCallback(uv_stream_t *server, int status);
-  static void onHandleCloseCallback(uv_handle_t *handle);
-  void handleRead();
 
   EventLoop* loop_;
-  uv_tcp_t *uvSocket_;
   Socket acceptSocket_;
   NewConnectionCallback newConnectionCallback_;
   NextEventLoopCallback nextEventLoopCallback_;

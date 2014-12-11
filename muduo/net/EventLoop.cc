@@ -77,6 +77,7 @@ EventLoop::EventLoop()
   do 
   {
     err = uv_loop_init(&loop_);
+    loop_.data = this;
     if (err) break;
 
     // initialize prepare handle
@@ -397,7 +398,21 @@ void EventLoop::createFreeSocket()
   }
 }
 
-void muduo::net::EventLoop::closeSocketAndRelease( uv_tcp_t *socket )
+void EventLoop::closeSocketInLoop( uv_tcp_t *socket )
 {
-  // TODO: uv_close and release socket
+  runInLoop(boost::bind(&EventLoop::closeSocket, this, socket));
+}
+
+void EventLoop::closeSocket(uv_tcp_t *socket)
+{
+  assertInLoopThread();
+  assert(socket);
+  uv_close(reinterpret_cast<uv_handle_t*>(socket), 
+           &EventLoop::closeCallback);
+}
+
+void EventLoop::closeCallback( uv_handle_t *handle )
+{
+  assert(uv_is_closing(handle));
+  delete handle;
 }
