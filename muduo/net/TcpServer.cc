@@ -37,7 +37,7 @@ TcpServer::TcpServer(EventLoop* loop,
   acceptor_->setNewConnectionCallback(
       boost::bind(&TcpServer::newConnection, this, _1, _2));
   acceptor_->setNextEventLoopCallback(
-      boost::bind(&TcpServer::nextEventLoop, this));
+      boost::bind(&TcpServer::getNextEventLoop, this));
 }
 
 TcpServer::~TcpServer()
@@ -133,7 +133,7 @@ void TcpServer::removeConnectionInLoop(const TcpConnectionPtr& conn)
       boost::bind(&TcpConnection::connectDestroyed, conn));
 }
 
-EventLoop* muduo::net::TcpServer::nextEventLoop()
+EventLoop* TcpServer::getNextEventLoop()
 {
   return threadPool_->getNextLoop();
 }
