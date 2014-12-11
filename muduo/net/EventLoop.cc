@@ -376,6 +376,7 @@ void EventLoop::wakeup()
 
 uv_tcp_t* EventLoop::getFreeSocket()
 {
+  // FIXME(cbj): currently only one free socket available.
   uv_tcp_t *tmp = freeSocket_.exchange(nullptr);
   runInLoop(boost::bind(&EventLoop::createFreeSocket, this));
   return tmp;
