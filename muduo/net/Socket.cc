@@ -195,3 +195,45 @@ void Socket::setKeepAlive(bool on)
   if (err)
     LOG_SYSFATAL << uv_strerror(err) << " in Socket::setKeepAlive";
 }
+
+bool Socket::isSelfConnect()
+{
+  int err = 0;
+  bool selfConnect = false;
+
+  do
+  {
+    struct sa localAddr;
+    int localLen = sizeof localAddr;
+    err = uv_tcp_getsockname(socket_, &localAddr.u.sa, &localLen);
+    if (err) break;
+
+    struct sa peerAddr;
+    int peerLen = sizeof peerAddr;
+    err = uv_tcp_getpeername(socket_, &peerAddr.u.sa, &peerLen);
+    if (err) break;
+
+    if (localAddr.u.sa.sa_family != peerAddr.u.sa.sa_family)
+      break;
+
+    if (localAddr.u.sa.sa_family == AF_INET)
+    {
+      selfConnect = localAddr.u.in.sin_port == peerAddr.u.in.sin_port &&
+        localAddr.u.in.sin_addr.s_addr == peerAddr.u.in.sin_addr.s_addr;
+    }
+    else // AF_INET6
+    {
+      selfConnect = localAddr.u.in6.sin6_port == peerAddr.u.in6.sin6_port &&
+        0 == memcmp(&localAddr.u.in6.sin6_addr, &peerAddr.u.in6.sin6_addr, sizeof(in6_addr));
+    }
+
+  } while (false);
+
+  if (err)
+  {
+    LOG_ERROR << uv_strerror(err) << " in Socket::isSelfConnect";
+    return false;
+  }
+  return selfConnect;
+}
+

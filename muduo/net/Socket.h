@@ -117,6 +117,8 @@ class Socket : boost::noncopyable
   {
     return uv_try_write(reinterpret_cast<uv_stream_t*>(socket_), bufs, nbufs);
   }
+
+  bool isSelfConnect();
   
  private:
   uv_tcp_t *socket_;
