@@ -31,7 +31,7 @@ using namespace muduo::net::detail;
 
 AtomicInt64 Timer::s_numCreated_;
 
-int muduo::net::Timer::start()
+int Timer::start()
 {
   assert(init_);
   double delay = timeDifference(expiration_, Timestamp::now());
