@@ -56,10 +56,12 @@ class Buffer : public muduo::copyable
   }
 
   Buffer(Buffer &&buf)
+    : buffer_(std::move(buf.buffer_)),
+      readerIndex_(buf.readerIndex_),
+      writerIndex_(buf.writerIndex_)
   {
-    buffer_ = std::move(buf.buffer_);
-    readerIndex_ = buf.readerIndex_;
-    writerIndex_ = buf.writerIndex_;
+    buf.readerIndex_ = 0;
+    buf.writerIndex_ = 0;
   }
 
   // implicit copy-ctor, move-ctor, dtor and assignment are fine
