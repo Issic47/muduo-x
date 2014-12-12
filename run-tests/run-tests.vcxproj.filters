@@ -18,6 +18,15 @@
     <Filter Include="base\passtest">
       <UniqueIdentifier>{c3649dc5-90e5-4612-a001-2b20248d5e35}</UniqueIdentifier>
     </Filter>
+    <Filter Include="net">
+      <UniqueIdentifier>{06a173cb-786f-401a-85a3-3167cbec407c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="net\passtest">
+      <UniqueIdentifier>{d6625141-a465-4f2b-a444-df37b5bab360}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="net\failtest">
+      <UniqueIdentifier>{295a04df-ad2f-43f5-a9df-c844c1941eeb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="basename.cpp">
@@ -97,6 +106,33 @@
     </ClCompile>
     <ClCompile Include="base\TimeZone_unittest.cc">
       <Filter>base\failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\Buffer_unittest.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\TimerQueue_unittest.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\InetAddress_unittest.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\EventLoop_unittest.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\EventLoopThread_unittest.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\EventLoopThreadPool_unittest.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\ZlibStream_unittest.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\EchoClient_unittest.cc">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="net\EchoServer_unittest.cc">
+      <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
