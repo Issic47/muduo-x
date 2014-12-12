@@ -236,12 +236,17 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
         loop_->queueInLoop(boost::bind(writeCompleteCallback_, shared_from_this()));
       }
     }
-    else if (nwrote != UV_EAGAIN)
+    else
     {
-      LOG_SYSERR << uv_strerror(nwrote) << " in TcpConnection::SendInLoop";
-      if (nwrote == UV_EPIPE || nwrote == UV_ECONNRESET)
+      int err = nwrote;
+      nwrote = 0;
+      if (err != UV_EAGAIN)
       {
-        faultError = true;
+        LOG_SYSERR << uv_strerror(err) << " in TcpConnection::SendInLoop";
+        if (err == UV_EPIPE || err == UV_ECONNRESET)
+        {
+          faultError = true;
+        }
       }
     }
   }
@@ -286,6 +291,7 @@ void TcpConnection::writeCallback( uv_write_t *handle, int status )
     TcpConnectionPtr conn = writeReq->conn.lock();
     if (conn)
     {
+      char *buf = writeReq->buf.base;
       conn->outputBufferManager_->retrieve(writeReq->buf.len);
       conn->collectFreeWriteReq(writeReq);
       if (conn->writeCompleteCallback_)
