@@ -27,21 +27,29 @@ thread_local EventLoop* t_loopInThisThread = 0;
 
 const int kPollTimeMs = 10000;
 
+#ifndef NATIVE_WIN32
+
+#if defined(__GCC__) || defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
+
 class IgnoreSigPipe
 {
  public:
   IgnoreSigPipe()
   {
-#ifndef NATIVE_WIN32
     ::signal(SIGPIPE, SIG_IGN);
-#endif
     // LOG_TRACE << "Ignore SIGPIPE";
   }
 };
+
+#if defined(__GCC__) || defined(__GNUC__)
 #pragma GCC diagnostic error "-Wold-style-cast"
+#endif
 
 IgnoreSigPipe initObj;
+
+#endif // NATIVE_WIN32
 }
 
 EventLoop* EventLoop::getEventLoopOfCurrentThread()
