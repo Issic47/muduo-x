@@ -66,7 +66,7 @@ muduo::net::InetAddress::InetAddress(int af /*= AF_NET*/,
     break;
 
   default:
-    LOG_SYSERR << "No support address family:" << af << " in InetAddres::InetAddree";
+    LOG_SYSERR << "No support address family:" << af << " in InetAddres::InetAddress";
     break;
   }
 
@@ -127,11 +127,11 @@ string InetAddress::toIpPort() const
   switch (addr_.u.sa.sa_family)
   {
   case AF_INET:
-    err = uv_ip4_name(&addr_.u.in, buf, sizeof buf);
+    err = uv_inet_ntop(AF_INET, &addr_.u.in.sin_addr, buf, sizeof buf);
     break;
 
   case AF_INET6:
-    err = uv_ip6_name(&addr_.u.in6, buf, sizeof buf);
+    err = uv_inet_ntop(AF_INET6, &addr_.u.in6.sin6_addr, buf, sizeof buf);
     break;
 
   default:
@@ -143,6 +143,10 @@ string InetAddress::toIpPort() const
     buf[0] = '\0';
     LOG_SYSERR << uv_strerror(err) << " in InetAddress::toIpPort";
   }
+
+  size_t end = ::strlen(buf);
+  uint16_t port = ntohs(addr_.u.in.sin_port);
+  snprintf(buf+end, sizeof(buf) - end, ":%u", port);
 
   return buf;
 }
