@@ -41,7 +41,8 @@ class Acceptor : boost::noncopyable
   void setNewConnectionCallback(const NewConnectionCallback& cb)
   { newConnectionCallback_ = cb; }
 
-  EventLoop* setNextEventLoopCallback(const NextEventLoopCallback &cb);
+  void setNextEventLoopCallback(const NextEventLoopCallback &cb)
+  { nextEventLoopCallback_ = cb; }
 
   bool listenning() const { return listenning_; }
   void listen();
