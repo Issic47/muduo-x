@@ -28,6 +28,8 @@ namespace net
 class Timer : public boost::enable_shared_from_this<Timer>, boost::noncopyable
 {
  public:
+  typedef boost::function<void (TimerPtr)> AfterTimeoutCallback;
+
   Timer(const TimerCallback& cb, 
         Timestamp when, 
         double interval,
