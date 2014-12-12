@@ -2,7 +2,11 @@
 
 #include <muduo/net/Buffer.h>
 #include <boost/noncopyable.hpp>
+
+#ifndef NATIVE_WIN32
 #pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif
+
 #include <zlib.h>
 
 namespace muduo
