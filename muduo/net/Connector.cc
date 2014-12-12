@@ -10,9 +10,9 @@
 #include <muduo/net/Connector.h>
 
 #include <muduo/base/Logging.h>
-#include <muduo/net/Channel.h>
 #include <muduo/net/EventLoop.h>
-#include <muduo/net/SocketsOps.h>
+#include <muduo/net/Socket.h>
+//#include <muduo/net/SocketsOps.h>
 
 #include <boost/bind.hpp>
 
@@ -23,47 +23,22 @@
 using namespace muduo;
 using namespace muduo::net;
 
-const int Connector::kMaxRetryDelayMs;
-
 Connector::Connector(EventLoop* loop, const InetAddress& serverAddr)
   : loop_(loop),
     serverAddr_(serverAddr),
     connect_(false),
     state_(kDisconnected),
     retryDelayMs_(kInitRetryDelayMs),
-    socket_(new uv_tcp_t),
+    socket_(nullptr),
     req_(new uv_connect_t)
 {
   LOG_DEBUG << "ctor[" << this << "]";
-  req_->data = this;
-
-  int err = uv_tcp_init(loop_->getUVLoop(), socket_);
-  socket_->data = this;
-  if (err) 
-  {
-    delete socket_;
-    socket_ = nullptr;
-    LOG_SYSFATAL << uv_strerror(err) << " in Connector::Connector";
-  }
 }
 
 Connector::~Connector()
 {
   LOG_DEBUG << "dtor[" << this << "]";
-  //assert(!channel_);
-  if (socket_)
-  {
-    uv_close(reinterpret_cast<uv_handle_t*>(socket_), 
-      &Connector::onHandleCloseCallback);
-  }
-}
-
-void Connector::onHandleCloseCallback( uv_handle_t *handle )
-{
-  assert(uv_is_closing(handle));
-  assert(handle->data);
-  static_cast<Connector*>(handle->data)->socket_ = nullptr;
-  delete handle;
+  assert(state_ == kDisconnected);
 }
 
 void Connector::start()
@@ -99,10 +74,10 @@ void Connector::stopInLoop()
   if (state_ == kConnecting)
   {
     setState(kDisconnected);
-    int err = uv_cancel(reinterpret_cast<uv_req_t*>(req_));
-    LOG_ERROR << uv_strerror(err) << " in Connector::stopInLoop";
-    int sockfd = removeAndResetChannel();
-    retry(sockfd);
+    // WARNING: currently no support cancel connect request.
+    //int err = uv_cancel(reinterpret_cast<uv_req_t*>(req_));
+    //LOG_ERROR << uv_strerror(err) << " in Connector::stopInLoop";
+    retry();
   }
 }
 
@@ -110,60 +85,22 @@ void Connector::connect()
 {
   if (nullptr == socket_)
   {
-    socket_ = new uv_tcp_t;
-    int err = uv_tcp_init(loop_->getUVLoop(), socket_);
-    socket_->data = this;
-    if (err) 
+    socket_ = loop_->getFreeSocket();
+    if (!socket_)
     {
-      delete socket_;
-      socket_ = nullptr;
-      LOG_SYSFATAL << uv_strerror(err) << " in Connector::connect";
+      LOG_ERROR << " no free socket in Connector::connect";
+      retry();
+      return;
     }
   }
 
+  req_->data = this;
   int err = uv_tcp_connect(req_, socket_, &serverAddr_.getSockAddr(), 
     &Connector::onConnectCallback);
   if (err)
   {
-    LOG_ERROR << uv_strerror(err) << "in Connector::connect";
+    LOG_SYSERR << uv_strerror(err) << "in Connector::connect";
     handleConnectError(err);
-  }
-}
-
-void Connector::handleConnectError( int err )
-{
-  switch (err)
-  {
-  case 0:
-  case UV_EINTR:
-  case UV_EISCONN:
-    connecting();
-    break;
-
-  case UV_EAGAIN:
-  case UV_EADDRINUSE:
-  case UV_EADDRNOTAVAIL:
-  case UV_ECONNREFUSED:
-  case UV_ENETUNREACH:
-    retry();
-    break;
-
-  case UV_EACCES:
-  case UV_EPERM:
-  case UV_EAFNOSUPPORT:
-  case UV_EALREADY:
-  case UV_EBADF:
-  case UV_EFAULT:
-  case UV_ENOTSOCK:
-    LOG_SYSERR << "connect error in Connector::startInLoop " << savedErrno;
-    sockets::close(sockfd);
-    break;
-
-  default:
-    LOG_SYSERR << "Unexpected error in Connector::startInLoop " << savedErrno;
-    sockets::close(sockfd);
-    // connectErrorCallback_();
-    break;
   }
 }
 
@@ -171,14 +108,76 @@ void Connector::onConnectCallback( uv_connect_t *req, int status )
 {
   assert(req->data);
   Connector *connector = static_cast<Connector*>(req->data);
-  if (status) 
-  {
-    LOG_SYSERR << uv_strerror(status) << " in Connector::onConnectCallback";
-    connector->handleConnectError(status);
-    return;
-  }
+  LOG_TRACE << "Connector::onConnectCallback " << connector->state_;
 
-  // TODO: start read
+  if (connector->state_ == Connector::kConnecting) 
+  {
+    if (status) 
+    {
+      LOG_SYSERR << uv_strerror(status) << " in Connector::onConnectCallback";
+      connector->handleConnectError(status);
+    }
+    else if (Socket::isSelfConnect(connector->socket_))
+    {
+      LOG_WARN << "self connect in Connector::onConnectCallback";
+      connector->retry();
+    }
+    else
+    {
+      connector->setState(kConnected);
+      if (connector->connect_)
+      {
+        connector->newConnectionCallback_(connector->socket_);
+      }
+      else
+      {
+        connector->loop_->closeSocketInLoop(connector->socket_);
+      }
+    }
+  }
+  else
+  {
+    assert(connector->state_ == Connector::kDisconnected);
+  }
+}
+
+void Connector::handleConnectError( int err )
+{
+  switch (err)
+  {
+    case 0:
+    case UV_EINTR:
+    case UV_EISCONN:
+      connecting();
+      break;
+
+    case UV_EAGAIN:
+    case UV_EADDRINUSE:
+    case UV_EADDRNOTAVAIL:
+    case UV_ECONNREFUSED:
+    case UV_ENETUNREACH:
+      retry();
+      break;
+
+    case UV_EACCES:
+    case UV_EPERM:
+    case UV_EAFNOSUPPORT:
+    case UV_EALREADY:
+    case UV_EBADF:
+    case UV_EFAULT:
+    case UV_ENOTSOCK:
+      LOG_SYSERR << "Connect error:" << uv_err_name(err);
+      loop_->closeSocketInLoop(socket_);
+      socket_ = nullptr;
+      break;
+
+    default:
+      LOG_SYSERR << "Unexpected error:" << uv_err_name(err);
+      loop_->closeSocketInLoop(socket_);
+      socket_ = nullptr;
+      // connectErrorCallback_();
+    break;
+  }
 }
 
 void Connector::restart()
@@ -193,87 +192,15 @@ void Connector::restart()
 void Connector::connecting()
 {
   setState(kConnecting);
-  //assert(!channel_);
-  //channel_.reset(new Channel(loop_, sockfd));
-  //channel_->setWriteCallback(
-  //    boost::bind(&Connector::handleWrite, this)); // FIXME: unsafe
-  //channel_->setErrorCallback(
-  //    boost::bind(&Connector::handleError, this)); // FIXME: unsafe
-
-  //// channel_->tie(shared_from_this()); is not working,
-  //// as channel_ is not managed by shared_ptr
-  //channel_->enableWriting();
-}
-
-int Connector::removeAndResetChannel()
-{
-  channel_->disableAll();
-  channel_->remove();
-  int sockfd = channel_->fd();
-  // Can't reset channel_ here, because we are inside Channel::handleEvent
-  loop_->queueInLoop(boost::bind(&Connector::resetChannel, this)); // FIXME: unsafe
-  return sockfd;
-}
-
-void Connector::resetChannel()
-{
-  channel_.reset();
-}
-
-void Connector::handleWrite()
-{
-  LOG_TRACE << "Connector::handleWrite " << state_;
-
-  if (state_ == kConnecting)
-  {
-    int sockfd = removeAndResetChannel();
-    int err = sockets::getSocketError(sockfd);
-    if (err)
-    {
-      LOG_WARN << "Connector::handleWrite - SO_ERROR = "
-               << err << " " << strerror_tl(err);
-      retry(sockfd);
-    }
-    else if (sockets::isSelfConnect(sockfd))
-    {
-      LOG_WARN << "Connector::handleWrite - Self connect";
-      retry(sockfd);
-    }
-    else
-    {
-      setState(kConnected);
-      if (connect_)
-      {
-        newConnectionCallback_(sockfd);
-      }
-      else
-      {
-        sockets::close(sockfd);
-      }
-    }
-  }
-  else
-  {
-    // what happened?
-    assert(state_ == kDisconnected);
-  }
-}
-
-void Connector::handleError()
-{
-  LOG_ERROR << "Connector::handleError state=" << state_;
-  if (state_ == kConnecting)
-  {
-    int sockfd = removeAndResetChannel();
-    int err = sockets::getSocketError(sockfd);
-    LOG_TRACE << "SO_ERROR = " << err << " " << strerror_tl(err);
-    retry();
-  }
 }
 
 void Connector::retry()
 {
-  uv_close(reinterpret_cast<uv_handle_t*>(socket_), &Connector::onHandleCloseCallback);
+  if (socket_)
+  {
+    loop_->closeSocketInLoop(socket_);
+    socket_ = nullptr;
+  }
   setState(kDisconnected);
   if (connect_)
   {

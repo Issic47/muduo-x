@@ -23,20 +23,21 @@ namespace muduo
 namespace net
 {
 
-class Channel;
 class EventLoop;
 
 class Connector : boost::noncopyable,
                   public boost::enable_shared_from_this<Connector>
 {
  public:
-  typedef boost::function<void (int sockfd)> NewConnectionCallback;
+  typedef boost::function<void (uv_tcp_t*)> NewConnectionCallback;
 
   Connector(EventLoop* loop, const InetAddress& serverAddr);
   ~Connector();
 
   void setNewConnectionCallback(const NewConnectionCallback& cb)
   { newConnectionCallback_ = cb; }
+  void setNewConnectionCallback(NewConnectionCallback&& cb)
+  { newConnectionCallback_ = std::move(cb); }
 
   void start();  // can be called in any thread
   void restart();  // must be called in loop thread
@@ -46,7 +47,6 @@ class Connector : boost::noncopyable,
 
  private:
   static void onConnectCallback(uv_connect_t *req, int status);
-  static void onHandleCloseCallback(uv_handle_t *handle);
 
  private:
   enum States { kDisconnected, kConnecting, kConnected };
@@ -69,7 +69,6 @@ class Connector : boost::noncopyable,
   InetAddress serverAddr_;
   bool connect_; // atomic
   States state_;  // FIXME: use atomic variable
-  //boost::scoped_ptr<Channel> channel_;
   uv_tcp_t *socket_;
   uv_connect_t *req_;
   NewConnectionCallback newConnectionCallback_;

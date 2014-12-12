@@ -12,7 +12,8 @@
 #include <muduo/base/Logging.h>
 #include <muduo/net/Connector.h>
 #include <muduo/net/EventLoop.h>
-#include <muduo/net/SocketsOps.h>
+#include <muduo/net/Socket.h>
+//#include <muduo/net/SocketsOps.h>
 
 #include <boost/bind.hpp>
 
@@ -131,21 +132,20 @@ void TcpClient::stop()
   connector_->stop();
 }
 
-void TcpClient::newConnection(int sockfd)
+void TcpClient::newConnection(uv_tcp_t *socket)
 {
   loop_->assertInLoopThread();
-  InetAddress peerAddr(sockets::getPeerAddr(sockfd));
+  InetAddress peerAddr(Socket::getPeerAddr(socket));
   char buf[32];
   snprintf(buf, sizeof buf, ":%s#%d", peerAddr.toIpPort().c_str(), nextConnId_);
   ++nextConnId_;
   string connName = name_ + buf;
 
-  InetAddress localAddr(sockets::getLocalAddr(sockfd));
+  InetAddress localAddr(Socket::getLocalAddr(socket));
   // FIXME poll with zero timeout to double confirm the new connection
   // FIXME use make_shared if necessary
-  TcpConnectionPtr conn(new TcpConnection(loop_,
-                                          connName,
-                                          sockfd,
+  TcpConnectionPtr conn(new TcpConnection(connName,
+                                          socket,
                                           localAddr,
                                           peerAddr));
 

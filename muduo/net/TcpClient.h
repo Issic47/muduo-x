@@ -63,18 +63,16 @@ class TcpClient : boost::noncopyable
   void setWriteCompleteCallback(const WriteCompleteCallback& cb)
   { writeCompleteCallback_ = cb; }
 
-#ifdef __GXX_EXPERIMENTAL_CXX0X__
   void setConnectionCallback(ConnectionCallback&& cb)
   { connectionCallback_ = std::move(cb); }
   void setMessageCallback(MessageCallback&& cb)
   { messageCallback_ = std::move(cb); }
   void setWriteCompleteCallback(WriteCompleteCallback&& cb)
   { writeCompleteCallback_ = std::move(cb); }
-#endif
 
  private:
   /// Not thread safe, but in loop
-  void newConnection(int sockfd);
+  void newConnection(uv_tcp_t *socket);
   /// Not thread safe, but in loop
   void removeConnection(const TcpConnectionPtr& conn);
 
