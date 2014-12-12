@@ -43,6 +43,10 @@ class Socket : boost::noncopyable
 
   ~Socket();
 
+  static bool isSelfConnect(uv_tcp_t *socket);
+  static struct sa getLocalAddr(uv_tcp_t *socket);
+  static struct sa getPeerAddr(uv_tcp_t *socket);
+
   uv_os_sock_t fd() const;
   uv_tcp_t* socket() const { return socket_; }
 
@@ -117,8 +121,6 @@ class Socket : boost::noncopyable
   {
     return uv_try_write(reinterpret_cast<uv_stream_t*>(socket_), bufs, nbufs);
   }
-
-  bool isSelfConnect();
   
  private:
   uv_tcp_t *socket_;

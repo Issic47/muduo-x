@@ -196,23 +196,15 @@ void Socket::setKeepAlive(bool on)
     LOG_SYSFATAL << uv_strerror(err) << " in Socket::setKeepAlive";
 }
 
-bool Socket::isSelfConnect()
+bool Socket::isSelfConnect(uv_tcp_t *socket)
 {
   int err = 0;
   bool selfConnect = false;
 
   do
   {
-    struct sa localAddr;
-    int localLen = sizeof localAddr;
-    err = uv_tcp_getsockname(socket_, &localAddr.u.sa, &localLen);
-    if (err) break;
-
-    struct sa peerAddr;
-    int peerLen = sizeof peerAddr;
-    err = uv_tcp_getpeername(socket_, &peerAddr.u.sa, &peerLen);
-    if (err) break;
-
+    struct sa localAddr = Socket::getLocalAddr(socket);
+    struct sa peerAddr = Socket::getPeerAddr(socket);
     if (localAddr.u.sa.sa_family != peerAddr.u.sa.sa_family)
       break;
 
@@ -237,3 +229,27 @@ bool Socket::isSelfConnect()
   return selfConnect;
 }
 
+
+struct sa Socket::getLocalAddr( uv_tcp_t *socket )
+{
+  struct sa localAddr;
+  int localLen = sizeof localAddr;
+  int err = uv_tcp_getsockname(socket, &localAddr.u.sa, &localLen);
+  if (err)
+  {
+    LOG_SYSERR << uv_strerror(err) << " in Socket::getLocalAddr";
+  }
+  return localAddr;
+}
+
+struct sa Socket::getPeerAddr( uv_tcp_t *socket )
+{
+  struct sa peerAddr;
+  int localLen = sizeof peerAddr;
+  int err = uv_tcp_getpeername(socket, &peerAddr.u.sa, &localLen);
+  if (err)
+  {
+    LOG_SYSERR << uv_strerror(err) << " in Socket::getPeerAddr";
+  }
+  return peerAddr;
+}
