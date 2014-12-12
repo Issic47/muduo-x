@@ -62,7 +62,10 @@ class Timer : public boost::enable_shared_from_this<Timer>, boost::noncopyable
     {
       // FIXME(cbj): need to stop the timer first?
       uv_timer_stop(timer_);
-      uv_close(reinterpret_cast<uv_handle_t*>(timer_), &Timer::closeCallback);
+      if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(timer_)))
+      {
+        uv_close(reinterpret_cast<uv_handle_t*>(timer_), &Timer::closeCallback);
+      }
       init_ = false;
     }
   }

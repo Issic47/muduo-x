@@ -55,6 +55,13 @@ class Buffer : public muduo::copyable
     assert(prependableBytes() == kCheapPrepend);
   }
 
+  Buffer(Buffer &&buf)
+  {
+    buffer_ = std::move(buf.buffer_);
+    readerIndex_ = buf.readerIndex_;
+    writerIndex_ = buf.writerIndex_;
+  }
+
   // implicit copy-ctor, move-ctor, dtor and assignment are fine
   // NOTE: implicit move-ctor is added in g++ 4.6
 
