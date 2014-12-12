@@ -1,12 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="failtest">
-      <UniqueIdentifier>{168c1604-2929-4b8c-8968-758ea0a17c4e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="passtest">
-      <UniqueIdentifier>{c3649dc5-90e5-4612-a001-2b20248d5e35}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -15,85 +9,94 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="base">
+      <UniqueIdentifier>{02750fbd-9052-456a-b745-e47023185c9d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="base\failtest">
+      <UniqueIdentifier>{168c1604-2929-4b8c-8968-758ea0a17c4e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="base\passtest">
+      <UniqueIdentifier>{c3649dc5-90e5-4612-a001-2b20248d5e35}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="TimeZone_unittest.cc">
-      <Filter>failtest</Filter>
-    </ClCompile>
-    <ClCompile Include="Fork_test.cc">
-      <Filter>failtest</Filter>
-    </ClCompile>
-    <ClCompile Include="Atomic_unittest.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
-    <ClCompile Include="BlockingQueue_test.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
-    <ClCompile Include="Date_unittest.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
-    <ClCompile Include="Exception_test.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
-    <ClCompile Include="Singleton_test.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
-    <ClCompile Include="Thread_test.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
-    <ClCompile Include="Timestamp_unittest.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
-    <ClCompile Include="ThreadLocal_test.cc">
-      <Filter>failtest</Filter>
-    </ClCompile>
-    <ClCompile Include="ThreadPool_test.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
-    <ClCompile Include="SingletonThreadLocal_test.cc">
-      <Filter>failtest</Filter>
-    </ClCompile>
-    <ClCompile Include="BlockingQueue_bench.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
-    <ClCompile Include="Mutex_test.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
-    <ClCompile Include="ProcessInfo_test.cc">
-      <Filter>failtest</Filter>
-    </ClCompile>
-    <ClCompile Include="FileUtil_test.cc">
-      <Filter>passtest</Filter>
-    </ClCompile>
     <ClCompile Include="basename.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="LogFile_test.cc">
-      <Filter>passtest</Filter>
+    <ClCompile Include="base\AsyncLogging_test.cc">
+      <Filter>base\passtest</Filter>
     </ClCompile>
-    <ClCompile Include="AsyncLogging_test.cc">
-      <Filter>passtest</Filter>
+    <ClCompile Include="base\Atomic_unittest.cc">
+      <Filter>base\passtest</Filter>
     </ClCompile>
-    <ClCompile Include="LogStream_test.cc">
-      <Filter>failtest</Filter>
+    <ClCompile Include="base\BlockingQueue_bench.cc">
+      <Filter>base\passtest</Filter>
     </ClCompile>
-    <ClCompile Include="Thread_bench.cc">
-      <Filter>passtest</Filter>
+    <ClCompile Include="base\BlockingQueue_test.cc">
+      <Filter>base\passtest</Filter>
     </ClCompile>
-    <ClCompile Include="LogStream_bench.cc">
-      <Filter>passtest</Filter>
+    <ClCompile Include="base\BoundedBlockingQueue_test.cc">
+      <Filter>base\passtest</Filter>
     </ClCompile>
-    <ClCompile Include="GzipFile_test.cc">
-      <Filter>passtest</Filter>
+    <ClCompile Include="base\Date_unittest.cc">
+      <Filter>base\passtest</Filter>
     </ClCompile>
-    <ClCompile Include="BoundedBlockingQueue_test.cc">
-      <Filter>passtest</Filter>
+    <ClCompile Include="base\Exception_test.cc">
+      <Filter>base\passtest</Filter>
     </ClCompile>
-    <ClCompile Include="Logging_test.cc">
-      <Filter>passtest</Filter>
+    <ClCompile Include="base\FileUtil_test.cc">
+      <Filter>base\passtest</Filter>
     </ClCompile>
-    <ClCompile Include="ThreadLocalSingleton_test.cc">
-      <Filter>failtest</Filter>
+    <ClCompile Include="base\GzipFile_test.cc">
+      <Filter>base\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\LogFile_test.cc">
+      <Filter>base\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\Logging_test.cc">
+      <Filter>base\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\LogStream_bench.cc">
+      <Filter>base\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\Mutex_test.cc">
+      <Filter>base\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\Singleton_test.cc">
+      <Filter>base\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\Thread_bench.cc">
+      <Filter>base\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\Thread_test.cc">
+      <Filter>base\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\ThreadPool_test.cc">
+      <Filter>base\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\Timestamp_unittest.cc">
+      <Filter>base\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\Fork_test.cc">
+      <Filter>base\failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\LogStream_test.cc">
+      <Filter>base\failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\ProcessInfo_test.cc">
+      <Filter>base\failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\SingletonThreadLocal_test.cc">
+      <Filter>base\failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\ThreadLocal_test.cc">
+      <Filter>base\failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\ThreadLocalSingleton_test.cc">
+      <Filter>base\failtest</Filter>
+    </ClCompile>
+    <ClCompile Include="base\TimeZone_unittest.cc">
+      <Filter>base\failtest</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
