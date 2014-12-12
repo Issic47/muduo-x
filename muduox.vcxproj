@@ -225,7 +225,9 @@
     </ClCompile>
     <ClCompile Include="muduo\net\Timer.cc" />
     <ClCompile Include="muduo\net\TimerQueue.cc" />
-    <ClCompile Include="muduo\net\UdpServer.cc" />
+    <ClCompile Include="muduo\net\UdpServer.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="muduo\win32\strncasecmp.cpp" />
     <ClCompile Include="muduo\win32\strptime.cpp" />
     <ClCompile Include="muduo\win32\WinFunc.cpp" />
@@ -390,7 +392,9 @@
     <ClInclude Include="muduo\net\Timer.h" />
     <ClInclude Include="muduo\net\TimerId.h" />
     <ClInclude Include="muduo\net\TimerQueue.h" />
-    <ClInclude Include="muduo\net\UdpServer.h" />
+    <ClInclude Include="muduo\net\UdpServer.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="muduo\net\ZlibStream.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClInclude>
