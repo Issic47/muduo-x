@@ -11,7 +11,9 @@
 #ifndef MUDUO_NET_SOCKETSOPS_H
 #define MUDUO_NET_SOCKETSOPS_H
 
+#ifndef NATIVE_WIN32
 #include <arpa/inet.h>
+#endif 
 
 namespace muduo
 {
