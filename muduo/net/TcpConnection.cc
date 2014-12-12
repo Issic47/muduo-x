@@ -240,7 +240,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     {
       int err = nwrote;
       nwrote = 0;
-      if (err != UV_EAGAIN)
+      if (err != UV_EAGAIN && err != UV_ENOSYS)
       {
         LOG_SYSERR << uv_strerror(err) << " in TcpConnection::SendInLoop";
         if (err == UV_EPIPE || err == UV_ECONNRESET)
@@ -291,14 +291,12 @@ void TcpConnection::writeCallback( uv_write_t *handle, int status )
     TcpConnectionPtr conn = writeReq->conn.lock();
     if (conn)
     {
-      char *buf = writeReq->buf.base;
       conn->outputBufferManager_->retrieve(writeReq->buf.len);
       conn->collectFreeWriteReq(writeReq);
       if (conn->writeCompleteCallback_)
       {
         conn->loop_->queueInLoop(boost::bind(conn->writeCompleteCallback_, conn));
       }
-      // FIXME(cbj): disconnecting?
       if (conn->state_ == kDisconnecting)
       {
         conn->shutdownInLoop();
@@ -327,32 +325,32 @@ void TcpConnection::shutdownInLoop()
 {
   loop_->assertInLoopThread();
 
-  uv_shutdown_t *req = new uv_shutdown_t;
-  req->data = this;
+  ShutdownRequest *shutdownReq = new ShutdownRequest;
+  shutdownReq->conn = shared_from_this();
+  shutdownReq->req.data = shutdownReq;
   isClosing_ = false;
   // we are not writing
-  socket_->shutdownWrite(req, &TcpConnection::shutdownCallback);
+  socket_->shutdownWrite(&shutdownReq->req, &TcpConnection::shutdownCallback);
 }
 
 void TcpConnection::shutdownCallback( uv_shutdown_t *req, int status )
 {
   assert(req->data);
-  TcpConnection *connect = reinterpret_cast<TcpConnection*>(req->data);
-  delete req;
+  ShutdownRequest *shutdownRequest = static_cast<ShutdownRequest*>(req->data);
+  TcpConnectionPtr connection = shutdownRequest->conn.lock();
+  delete shutdownRequest;
 
   if (status) 
   {
     LOG_SYSERR << uv_strerror(status) << " in TcpConnection::shutdownCallback";
-    // FIXME(cbj): return?
-    //return;
   }
 
-  if (connect->isClosing_)
+  if (connection && connection->isClosing_)
   {
-    TcpConnectionPtr guardThis(connect->shared_from_this());
-    connect->connectionCallback_(guardThis);
+    TcpConnectionPtr guardThis(connection->shared_from_this());
+    connection->connectionCallback_(guardThis);
     // must be the last line
-    connect->closeCallback_(guardThis);
+    connection->closeCallback_(guardThis);
   }
 }
 
@@ -492,10 +490,11 @@ void TcpConnection::disableReadWrite(bool closeAfterDisable)
     LOG_ERROR << uv_strerror(err) << " in TcpConnection::disableReadWrite";
   }
 
-  uv_shutdown_t *req = new uv_shutdown_t;
-  req->data = this;
+  ShutdownRequest *shutdownReq = new ShutdownRequest;
+  shutdownReq->conn = shared_from_this();
+  shutdownReq->req.data = shutdownReq;
   isClosing_ = closeAfterDisable;
-  socket_->shutdownWrite(req, &TcpConnection::shutdownCallback);
+  socket_->shutdownWrite(&shutdownReq->req, &TcpConnection::shutdownCallback);
 }
 
 void TcpConnection::connectDestroyed()

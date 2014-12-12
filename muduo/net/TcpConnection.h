@@ -131,6 +131,12 @@ class TcpConnection : boost::noncopyable,
     uv_buf_t buf;
   } WriteRequest;
 
+  typedef struct ShutdownRequest
+  {
+    boost::weak_ptr<TcpConnection> conn;
+    uv_shutdown_t req;
+  } ShutdownRequest;
+
   static void allocCallback(uv_handle_t *handle, size_t suggestedSize, uv_buf_t *buf);
   static void readCallback(uv_stream_t *handle, ssize_t nread, const uv_buf_t *buf);
   static void writeCallback(uv_write_t *handle, int status);
