@@ -377,7 +377,7 @@ class Buffer : public muduo::copyable
   ///
   /// It may implement with readv(2)
   /// @return result of read(2), @c errno is saved
-  ssize_t readFd(int fd, int* savedErrno);
+  //ssize_t readFd(int fd, int* savedErrno);
 
  private:
 
