@@ -11,11 +11,11 @@ using namespace muduo::net;
 
 int main(int argc, char* argv[])
 {
-  Logger::setLogLevel(Logger::DEBUG);
+  Logger::setLogLevel(Logger::kDEBUG);
 
   EventLoopThread loopThread;
   {
-  InetAddress serverAddr("127.0.0.1", 1234); // should succeed
+  InetAddress serverAddr(AF_INET, "127.0.0.1", 1234); // should succeed
   TcpClient client(loopThread.startLoop(), serverAddr, "TcpClient");
   client.connect();
   CurrentThread::sleepUsec(500 * 1000);  // wait for connect

@@ -70,6 +70,7 @@ class EchoServer
 
 int main(int argc, char* argv[])
 {
+  Logger::setLogLevel(Logger::kDEBUG);
   LOG_INFO << "pid = " << getpid() << ", tid = " << CurrentThread::tid();
   LOG_INFO << "sizeof TcpConnection = " << sizeof(TcpConnection);
   if (argc > 1)

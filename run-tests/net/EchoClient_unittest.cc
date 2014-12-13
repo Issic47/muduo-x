@@ -11,7 +11,7 @@
 #include <utility>
 
 #include <stdio.h>
-#include <unistd.h>
+//#include <unistd.h>
 
 using namespace muduo;
 using namespace muduo::net;
@@ -85,11 +85,12 @@ class EchoClient : boost::noncopyable
 
 int main(int argc, char* argv[])
 {
+  Logger::setLogLevel(Logger::kTRACE);
   LOG_INFO << "pid = " << getpid() << ", tid = " << CurrentThread::tid();
   if (argc > 1)
   {
     EventLoop loop;
-    InetAddress serverAddr(argv[1], 2000);
+    InetAddress serverAddr(AF_INET, argv[1], 2000);
 
     int n = 1;
     if (argc > 2)

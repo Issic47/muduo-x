@@ -128,11 +128,20 @@
     <ClCompile Include="net\ZlibStream_unittest.cc">
       <Filter>net\passtest</Filter>
     </ClCompile>
-    <ClCompile Include="net\EchoClient_unittest.cc">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="net\EchoServer_unittest.cc">
-      <Filter>src</Filter>
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\EchoClient_unittest.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\TcpClient_reg1.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\TcpClient_reg2.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\TcpClient_reg3.cc">
+      <Filter>net\passtest</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
