@@ -49,6 +49,12 @@ class Connector : boost::noncopyable,
   static void onConnectCallback(uv_connect_t *req, int status);
 
  private:
+  typedef struct ConnectRequest
+  {
+    boost::weak_ptr<Connector> connector;
+    uv_connect_t req;
+  } ConnectRequest;
+
   enum States { kDisconnected, kConnecting, kConnected };
   static const int kMaxRetryDelayMs = 30*1000;
   static const int kInitRetryDelayMs = 500;
@@ -70,10 +76,11 @@ class Connector : boost::noncopyable,
   bool connect_; // atomic
   States state_;  // FIXME: use atomic variable
   uv_tcp_t *socket_;
-  uv_connect_t *req_;
   NewConnectionCallback newConnectionCallback_;
   int retryDelayMs_;
 };
+
+typedef boost::shared_ptr<Connector> ConnectorPtr;
 
 }
 }

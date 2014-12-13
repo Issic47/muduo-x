@@ -29,8 +29,7 @@ Connector::Connector(EventLoop* loop, const InetAddress& serverAddr)
     connect_(false),
     state_(kDisconnected),
     retryDelayMs_(kInitRetryDelayMs),
-    socket_(nullptr),
-    req_(new uv_connect_t)
+    socket_(nullptr)
 {
   LOG_DEBUG << "ctor[" << this << "]";
 }
@@ -94,8 +93,10 @@ void Connector::connect()
     }
   }
 
-  req_->data = this;
-  int err = uv_tcp_connect(req_, socket_, &serverAddr_.getSockAddr(), 
+  ConnectRequest *connectReq = new ConnectRequest;
+  connectReq->connector = shared_from_this();
+  connectReq->req.data = connectReq;
+  int err = uv_tcp_connect(&connectReq->req, socket_, &serverAddr_.getSockAddr(), 
     &Connector::onConnectCallback);
   if (err)
   {
@@ -107,37 +108,46 @@ void Connector::connect()
 void Connector::onConnectCallback( uv_connect_t *req, int status )
 {
   assert(req->data);
-  Connector *connector = static_cast<Connector*>(req->data);
-  LOG_TRACE << "Connector::onConnectCallback " << connector->state_;
-
-  if (connector->state_ == Connector::kConnecting) 
+  ConnectRequest *connectReq = static_cast<ConnectRequest*>(req->data);
+  ConnectorPtr connector = connectReq->connector.lock();
+  delete connectReq;
+  if (!connector) 
   {
-    if (status) 
-    {
-      LOG_SYSERR << uv_strerror(status) << " in Connector::onConnectCallback";
-      connector->handleConnectError(status);
-    }
-    else if (Socket::isSelfConnect(connector->socket_))
-    {
-      LOG_WARN << "self connect in Connector::onConnectCallback";
-      connector->retry();
-    }
-    else
-    {
-      connector->setState(kConnected);
-      if (connector->connect_)
-      {
-        connector->newConnectionCallback_(connector->socket_);
-      }
-      else
-      {
-        connector->loop_->closeSocketInLoop(connector->socket_);
-      }
-    }
+    LOG_WARN << "Connector has been destructed before onConnectCallback";
   }
   else
   {
-    assert(connector->state_ == Connector::kDisconnected);
+    LOG_TRACE << "Connector::onConnectCallback " << connector->state_;
+
+    if (connector->state_ == Connector::kConnecting) 
+    {
+      if (status) 
+      {
+        LOG_SYSERR << uv_strerror(status) << " in Connector::onConnectCallback";
+        connector->handleConnectError(status);
+      }
+      else if (Socket::isSelfConnect(connector->socket_))
+      {
+        LOG_WARN << "self connect in Connector::onConnectCallback";
+        connector->retry();
+      }
+      else
+      {
+        connector->setState(kConnected);
+        if (connector->connect_)
+        {
+          connector->newConnectionCallback_(connector->socket_);
+        }
+        else
+        {
+          connector->loop_->closeSocketInLoop(connector->socket_);
+        }
+      }
+    }
+    else
+    {
+      assert(connector->state_ == Connector::kDisconnected);
+    }
   }
 }
 
