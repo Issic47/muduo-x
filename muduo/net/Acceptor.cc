@@ -51,7 +51,7 @@ void Acceptor::onNewConnectionCallback( uv_stream_t *server, int status )
 
   assert(server->data);
   Acceptor *acceptor = static_cast<Acceptor*>(server->data);
-  
+
   acceptor->loop_->assertInLoopThread();
 
   EventLoop *nextEventLoop = acceptor->loop_;
@@ -64,8 +64,10 @@ void Acceptor::onNewConnectionCallback( uv_stream_t *server, int status )
   uv_tcp_t *client = nextEventLoop->getFreeSocket();
   if (nullptr == client) 
   {
-    LOG_ERROR << "Cannot get free socket in Acceptor::onNewConnectionCallback";
-    return;
+    LOG_WARN << "Cannot get free socket from next event loop in Acceptor::onNewConnectionCallback";
+    nextEventLoop = acceptor->loop_;
+    client = nextEventLoop->getFreeSocket();
+    assert(client);
   }
 
   InetAddress peerAddr;
