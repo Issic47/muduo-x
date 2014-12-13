@@ -4,7 +4,7 @@
 // Use of this source code is governed by a BSD-style license
 // that can be found in the License file.
 
-// Author: Shuo Chen (chenshuo at chenshuo dot com)
+// Author: Shuo Chen (chenshuo at chenshuo dot com), Bijin Chen
 //
 // This is a public header file, it must only include public header files.
 

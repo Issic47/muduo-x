@@ -1,7 +1,7 @@
 // Use of this source code is governed by a BSD-style license
 // that can be found in the License file.
 //
-// Author: Shuo Chen (chenshuo at chenshuo dot com)
+// Author: Shuo Chen (chenshuo at chenshuo dot com), Bijin Chen
 
 #ifndef MUDUO_BASE_THREAD_H
 #define MUDUO_BASE_THREAD_H
@@ -27,7 +27,7 @@ class Thread : boost::noncopyable
   ~Thread();
 
   void start();
-  int join(); // return pthread_join()
+  int join();
 
   bool started() const { return started_; }
   // pthread_t pthreadId() const { return pthreadId_; }

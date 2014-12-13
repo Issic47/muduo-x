@@ -4,7 +4,7 @@
 // Use of this source code is governed by a BSD-style license
 // that can be found in the License file.
 
-// Author: Shuo Chen (chenshuo at chenshuo dot com)
+// Author: Shuo Chen (chenshuo at chenshuo dot com), Bijin Chen
 //
 // This is an internal header file, you should not include this.
 
@@ -54,7 +54,6 @@ class TimerQueue : boost::noncopyable
   void cancel(TimerId timerId);
 
  private:
-  // FIXME: use unique_ptr<Timer> instead of raw pointers.
   typedef std::list<TimerPtr> TimerList;
 
   void afterTimeoutCallback(TimerPtr timer);
