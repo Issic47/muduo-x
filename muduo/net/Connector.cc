@@ -100,8 +100,8 @@ void Connector::connect()
   if (err)
   {
     LOG_SYSERR << uv_strerror(err) << "in Connector::connect";
-    handleConnectError(err);
   }
+  handleConnectError(err);
 }
 
 void Connector::onConnectCallback( uv_connect_t *req, int status )
