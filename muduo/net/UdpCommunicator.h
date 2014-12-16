@@ -49,10 +49,10 @@ class UdpCommunicator : boost::noncopyable,
   void stopRecv();
 
   // void send(const InetAddress& peerAddr, string&& message); // C++11
-  int send(const InetAddress& addr, const void* message, int len);
-  int send(const InetAddress& addr, const StringPiece& message);
+  void send(const InetAddress& addr, const void* message, int len);
+  void send(const InetAddress& addr, const StringPiece& message);
   // void send(const InetAddress& peerAddr, Buffer&& message); // C++11
-  int send(const InetAddress& addr, Buffer* message);  // this one will swap data
+  void send(const InetAddress& addr, Buffer* message);  // this one will swap data
 
   /// Set message callback.
   /// Not thread safe.
@@ -69,7 +69,7 @@ class UdpCommunicator : boost::noncopyable,
   {
     boost::weak_ptr<UdpCommunicator> communicator;
     uv_udp_send_t req;
-    uv_buf_t buf;
+    Buffer buf;
   } SendRequest;
 
   static void allocCallback(uv_udp_t *handle, size_t suggestedSize, uv_buf_t *buf);
@@ -86,8 +86,7 @@ class UdpCommunicator : boost::noncopyable,
   void sendInLoop(const InetAddress &addr, const void* message, size_t len);
 
   inline SendRequest* getFreeSendReq();
-  inline void collectSendReq(SendRequest *req);
-
+  inline void releaseSendReq(SendRequest *req);
 
   EventLoop* loop_;  // the acceptor loop
   uv_udp_t *socket_;
@@ -95,12 +94,12 @@ class UdpCommunicator : boost::noncopyable,
   const string hostport_;
   const string name_;
   InetAddress localAddr_;
-  std::list<Buffer*> freeOutputBuffer_;
   std::list<SendRequest*> freeSendReqList_;
   MessageCallback messageCallback_;
   WriteCompleteCallback writeCompleteCallback_;
+  size_t bytesInSend_;
   AtomicInt32 started_;
-  
+  AtomicInt32 messageId_;
 };
 
 typedef boost::shared_ptr<UdpCommunicator> UdpCommunicatorPtr;
@@ -119,7 +118,7 @@ UdpCommunicator::SendRequest* UdpCommunicator::getFreeSendReq()
   }
 }
 
-void UdpCommunicator::collectSendReq(SendRequest *req)
+void UdpCommunicator::releaseSendReq(SendRequest *req)
 {
   freeSendReqList_.push_back(req);
 }

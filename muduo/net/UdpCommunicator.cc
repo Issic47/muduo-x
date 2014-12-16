@@ -9,14 +9,29 @@
 using namespace muduo;
 using namespace muduo::net;
 
+UdpCommunicator::UdpCommunicator( EventLoop* loop, const string& nameArg )
+  : loop_(CHECK_NOTNULL(loop)),
+    name_(nameArg),
+    bytesInSend_(0)
+{
+}
+
+UdpCommunicator::~UdpCommunicator()
+{
+
+}
+
+void UdpCommunicator::bind( const InetAddress &addr, bool reuseAddr )
+{
+}
 
 
-int UdpCommunicator::send(const InetAddress& addr, const void* data, int len )
+void UdpCommunicator::send(const InetAddress& addr, const void* data, int len )
 {
   send(addr, StringPiece(static_cast<const char*>(data), len));
 }
 
-int UdpCommunicator::send(const InetAddress& addr, const StringPiece& message)
+void UdpCommunicator::send(const InetAddress& addr, const StringPiece& message)
 {
   if (loop_->isInLoopThread())
   {
@@ -33,7 +48,7 @@ int UdpCommunicator::send(const InetAddress& addr, const StringPiece& message)
   }
 }
 
-int UdpCommunicator::send(const InetAddress& addr, Buffer* buf)
+void UdpCommunicator::send(const InetAddress& addr, Buffer* buf)
 {
   if (loop_->isInLoopThread())
   {
@@ -68,6 +83,7 @@ void UdpCommunicator::sendInLoop(const InetAddress& addr, const void* data, size
     {
       LOG_ERROR << "UDP data is truncated: " << len << "B to " << nwrite << "B";
     }
+    // TODO: call writeComplementCallback?
   }
   else
   {
@@ -86,10 +102,12 @@ void UdpCommunicator::sendInLoop(const InetAddress& addr, const void* data, size
     assert(sendRequest);
     sendRequest->communicator = shared_from_this();
     sendRequest->req.data = sendRequest;
-    sendRequest->buf = uv_buf_init();
+    sendRequest->buf.ensureWritableBytes(len);
+    uv_buf_t buf = uv_buf_init(sendRequest->buf.beginWrite(), len);
+    sendRequest->buf.append(data, len);
     int err = uv_udp_send(&sendRequest->req, 
                           socket_, 
-                          &sendRequest->buf, 
+                          &buf, 
                           1,
                           &addr.getSockAddr(),
                           &UdpCommunicator::sendCallback);
@@ -102,22 +120,30 @@ void UdpCommunicator::sendInLoop(const InetAddress& addr, const void* data, size
 
 void UdpCommunicator::sendCallback( uv_udp_send_t *req, int status )
 {
+  assert(req->data);
+  SendRequest *sendRequest = static_cast<SendRequest*>(req->data);
+  UdpCommunicatorPtr communicator = sendRequest->communicator.lock();
+
   if (status)
   {
     LOG_SYSERR << uv_strerror(status) << " in UdpCommnunicator::sendCallback";
   }
-  else
+
+  if (communicator)
   {
-    assert(req->data);
-    SendRequest *sendRequest = static_cast<SendRequest*>(req->data);
-    UdpCommunicatorPtr communicator = sendRequest->communicator.lock();
-    if (communicator)
+    sendRequest->buf.retrieveAll();
+    communicator->releaseSendReq(sendRequest);
+    if (communicator->writeCompleteCallback_)
     {
-      communicator->collectSendReq(sendRequest);
-      if (communicator->writeCompleteCallback_)
-      {
-        communicator->writeCompleteCallback_();
-      }
+      communicator->writeCompleteCallback_();
     }
   }
+  else
+  {
+    LOG_WARN << "UdpCommunicator has been destructed before writeCallback";
+    delete sendRequest;
+  }
 }
+
+
+
