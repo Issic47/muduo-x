@@ -154,8 +154,8 @@ class TcpConnection : boost::noncopyable,
   void forceCloseInLoop();
   
   inline WriteRequest* getFreeWriteReq();
-  inline void collectFreeWriteReq(WriteRequest *req);
-  void releaseFreeWriteReq();
+  inline void releaseWriteReq(WriteRequest *req);
+  void releaseAllFreeWriteReq();
 
   void setState(StateE s) { state_ = s; }
 
@@ -195,12 +195,12 @@ TcpConnection::WriteRequest* TcpConnection::getFreeWriteReq()
   return new WriteRequest;
 }
 
-void TcpConnection::collectFreeWriteReq( WriteRequest *req )
+void TcpConnection::releaseWriteReq( WriteRequest *req )
 {
   freeWriteReqList_.push_back(req);
 }
 
-}
-}
+} // namespace net
+} // namespace muduo
 
 #endif  // MUDUO_NET_TCPCONNECTION_H

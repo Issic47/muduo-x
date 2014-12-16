@@ -145,10 +145,10 @@ TcpConnection::~TcpConnection()
             << " state=" << state_;
   assert(state_ == kDisconnected);
   loop_->closeSocketInLoop(socket_->socket());
-  releaseFreeWriteReq();
+  releaseAllFreeWriteReq();
 }
 
-void TcpConnection::releaseFreeWriteReq()
+void TcpConnection::releaseAllFreeWriteReq()
 {
   while (!freeWriteReqList_.empty())
   {
@@ -291,33 +291,32 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
 
 void TcpConnection::writeCallback( uv_write_t *handle, int status )
 {
+  assert(handle->data);
+  WriteRequest *writeReq = static_cast<WriteRequest*>(handle->data);
+  TcpConnectionPtr conn = writeReq->conn.lock();
+
   if (status)
   {
     LOG_SYSERR << uv_strerror(status) << " in TcpConnection::writeCallback";
   }
+
+  if (conn)
+  {
+    conn->outputBuffer_->retrieve(writeReq->buf.len);
+    conn->releaseWriteReq(writeReq);
+    if (conn->writeCompleteCallback_)
+    {
+      conn->loop_->queueInLoop(boost::bind(conn->writeCompleteCallback_, conn));
+    }
+    if (conn->state_ == kDisconnecting)
+    {
+      conn->shutdownInLoop();
+    }
+  }
   else
   {
-    assert(handle->data);
-    WriteRequest *writeReq = static_cast<WriteRequest*>(handle->data);
-    TcpConnectionPtr conn = writeReq->conn.lock();
-    if (conn)
-    {
-      conn->outputBuffer_->retrieve(writeReq->buf.len);
-      conn->collectFreeWriteReq(writeReq);
-      if (conn->writeCompleteCallback_)
-      {
-        conn->loop_->queueInLoop(boost::bind(conn->writeCompleteCallback_, conn));
-      }
-      if (conn->state_ == kDisconnecting)
-      {
-        conn->shutdownInLoop();
-      }
-    }
-    else
-    {
-      LOG_WARN << "TcpConnection has been destructed before writeCallback";
-      delete writeReq;
-    }
+    LOG_WARN << "TcpConnection has been destructed before writeCallback";
+    delete writeReq;
   }
 }
 
