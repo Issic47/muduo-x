@@ -17,7 +17,7 @@ using namespace muduo::net;
 
 Acceptor::Acceptor(EventLoop* loop, const InetAddress& listenAddr, bool reuseport)
   : loop_(loop),
-    acceptSocket_(CHECK_NOTNULL(loop_->getFreeSocket())),
+    acceptSocket_(CHECK_NOTNULL(loop_->getFreeTcpSocket())),
     listenning_(false)
 { 
   acceptSocket_.setData(this);
@@ -61,12 +61,12 @@ void Acceptor::onNewConnectionCallback( uv_stream_t *server, int status )
     assert(nextEventLoop);
   }
 
-  uv_tcp_t *client = nextEventLoop->getFreeSocket();
+  uv_tcp_t *client = nextEventLoop->getFreeTcpSocket();
   if (nullptr == client) 
   {
     LOG_WARN << "Cannot get free socket from next event loop in Acceptor::onNewConnectionCallback";
     nextEventLoop = acceptor->loop_;
-    client = nextEventLoop->getFreeSocket();
+    client = nextEventLoop->getFreeTcpSocket();
     assert(client);
   }
 

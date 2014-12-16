@@ -35,7 +35,7 @@ namespace net
 
 class EventLoop;
 class Socket;
-class OutputBufferManager;
+class OutputBuffer;
 
 ///
 /// TCP connection, for both client and server usage.
@@ -155,6 +155,7 @@ class TcpConnection : boost::noncopyable,
   
   inline WriteRequest* getFreeWriteReq();
   inline void collectFreeWriteReq(WriteRequest *req);
+  void releaseFreeWriteReq();
 
   void setState(StateE s) { state_ = s; }
 
@@ -173,7 +174,7 @@ class TcpConnection : boost::noncopyable,
   size_t highWaterMark_;
   Buffer inputBuffer_;
   std::list<WriteRequest*> freeWriteReqList_;
-  boost::scoped_ptr<OutputBufferManager> outputBufferManager_;
+  boost::scoped_ptr<OutputBuffer> outputBuffer_;
   boost::any context_;
   bool isClosing_;
   // FIXME: creationTime_, lastReceiveTime_

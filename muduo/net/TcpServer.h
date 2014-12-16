@@ -67,6 +67,8 @@ class TcpServer : boost::noncopyable
   void setThreadNum(int numThreads);
   void setThreadInitCallback(const ThreadInitCallback& cb)
   { threadInitCallback_ = cb; }
+  void setThreadInitCallback(ThreadInitCallback&& cb)
+  { threadInitCallback_ = std::move(cb); }
   /// valid after calling start()
   boost::shared_ptr<EventLoopThreadPool> threadPool()
   { return threadPool_; }
@@ -81,16 +83,22 @@ class TcpServer : boost::noncopyable
   /// Not thread safe.
   void setConnectionCallback(const ConnectionCallback& cb)
   { connectionCallback_ = cb; }
+  void setConnectionCallback(ConnectionCallback&& cb)
+  { connectionCallback_ = std::move(cb); }
 
   /// Set message callback.
   /// Not thread safe.
   void setMessageCallback(const MessageCallback& cb)
   { messageCallback_ = cb; }
+  void setMessageCallback(MessageCallback&& cb)
+  { messageCallback_ = std::move(cb); }
 
   /// Set write complete callback.
   /// Not thread safe.
   void setWriteCompleteCallback(const WriteCompleteCallback& cb)
   { writeCompleteCallback_ = cb; }
+  void setWriteCompleteCallback(WriteCompleteCallback&& cb)
+  { writeCompleteCallback_ = std::move(cb); }
 
  private:
   /// Not thread safe, but in loop

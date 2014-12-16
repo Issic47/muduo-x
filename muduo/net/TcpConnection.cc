@@ -22,12 +22,12 @@ namespace muduo
 namespace net
 {
 
-class OutputBufferManager : boost::noncopyable
+class OutputBuffer : boost::noncopyable
 {
  public:
   typedef std::list<Buffer> BufferList;
 
-  OutputBufferManager()
+  OutputBuffer()
     : readableBytes_(0)
   {
     outputBuffers_.push_back(Buffer());
@@ -127,7 +127,7 @@ TcpConnection::TcpConnection(const string& nameArg,
     peerAddr_(peerAddr),
     highWaterMark_(64*1024*1024),
     isClosing_(false),
-    outputBufferManager_(new OutputBufferManager)
+    outputBuffer_(new OutputBuffer)
 {
   assert(socket->loop);
   assert(socket->loop->data);
@@ -145,6 +145,17 @@ TcpConnection::~TcpConnection()
             << " state=" << state_;
   assert(state_ == kDisconnected);
   loop_->closeSocketInLoop(socket_->socket());
+  releaseFreeWriteReq();
+}
+
+void TcpConnection::releaseFreeWriteReq()
+{
+  while (!freeWriteReqList_.empty())
+  {
+    WriteRequest *req = freeWriteReqList_.front();
+    freeWriteReqList_.pop_front();
+    delete req;
+  }
 }
 
 bool TcpConnection::getTcpInfo(struct tcp_info* tcpi) const
@@ -222,7 +233,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     return;
   }
 
-  if (socket_->getWriteQueueSize() == 0 && outputBufferManager_->readableBytes() == 0) 
+  if (socket_->getWriteQueueSize() == 0 && outputBuffer_->readableBytes() == 0) 
   {
     uv_buf_t buf = uv_buf_init(
       static_cast<char*>(const_cast<void*>(data)), 
@@ -255,7 +266,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
 
   if (!faultError && remaining > 0)
   {
-    size_t oldLen = outputBufferManager_->readableBytes();
+    size_t oldLen = outputBuffer_->readableBytes();
     if (oldLen + remaining >= highWaterMark_ && 
         oldLen < highWaterMark_ && 
         highWaterMarkCallback_)
@@ -267,7 +278,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     writeReq->req.data = writeReq;
     writeReq->conn = shared_from_this();
     writeReq->buf = uv_buf_init(
-      outputBufferManager_->append(static_cast<const char*>(data)+nwrote, remaining),
+      outputBuffer_->append(static_cast<const char*>(data)+nwrote, remaining),
       remaining);
     int err = socket_->write(&writeReq->req, &writeReq->buf, 1, &TcpConnection::writeCallback);
     if (err)
@@ -291,7 +302,7 @@ void TcpConnection::writeCallback( uv_write_t *handle, int status )
     TcpConnectionPtr conn = writeReq->conn.lock();
     if (conn)
     {
-      conn->outputBufferManager_->retrieve(writeReq->buf.len);
+      conn->outputBuffer_->retrieve(writeReq->buf.len);
       conn->collectFreeWriteReq(writeReq);
       if (conn->writeCompleteCallback_)
       {
@@ -437,6 +448,7 @@ void TcpConnection::connectEstablished()
 void TcpConnection::allocCallback( uv_handle_t *handle, size_t suggestedSize, uv_buf_t *buf )
 {
   assert(handle->data);
+  // FIXME(cbj): resizing buffer would cause buf->base in readCallback crash?
   TcpConnection *connetion = static_cast<TcpConnection*>(handle->data);
   connetion->inputBuffer_.ensureWritableBytes(suggestedSize);
   buf->base = connetion->inputBuffer_.beginWrite();

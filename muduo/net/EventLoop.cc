@@ -67,7 +67,8 @@ EventLoop::EventLoop()
     //poller_(Poller::newDefaultPoller(this)),
     timerQueue_(new TimerQueue(this)),
     initLoopTime_(0),
-    freeSocket_(new uv_tcp_t)
+    freeTcpSocket_(new uv_tcp_t),
+    freeUdpSocket_(new uv_udp_t)
     //currentActiveChannel_(NULL)
 {
   LOG_DEBUG << "EventLoop created " << this << " in thread " << threadId_;
@@ -107,7 +108,7 @@ EventLoop::EventLoop()
     if (err) break;
     async_handle_.data = this;
 
-    err = uv_tcp_init(&loop_, freeSocket_);
+    err = uv_tcp_init(&loop_, freeTcpSocket_);
     if (err) break;
 
   } while (false);
@@ -124,14 +125,19 @@ EventLoop::~EventLoop()
   LOG_DEBUG << "EventLoop " << this << " of thread " << threadId_
             << " destructs in thread " << CurrentThread::tid();
 
-  uv_tcp_t *socket = freeSocket_.exchange(nullptr);
+  uv_tcp_t *tcpSocket = freeTcpSocket_.exchange(nullptr);
+  uv_udp_t *udpSocket = freeUdpSocket_.exchange(nullptr);
 
   uv_walk(&loop_, &EventLoop::closeWalkCallback, NULL);
   uv_run(&loop_, UV_RUN_DEFAULT);
 
-  if (socket)
+  if (tcpSocket)
   {
-    delete socket; // release socket
+    delete tcpSocket; // release socket
+  }
+  if (udpSocket)
+  {
+    delete udpSocket;
   }
 
   int err = uv_loop_close(&loop_);
@@ -382,19 +388,19 @@ void EventLoop::wakeup()
 //  }
 //}
 
-uv_tcp_t* EventLoop::getFreeSocket()
+uv_tcp_t* EventLoop::getFreeTcpSocket()
 {
   // FIXME(cbj): currently only one free socket available.
-  uv_tcp_t *tmp = freeSocket_.exchange(nullptr);
-  runInLoop(boost::bind(&EventLoop::createFreeSocket, this));
+  uv_tcp_t *tmp = freeTcpSocket_.exchange(nullptr);
+  runInLoop(boost::bind(&EventLoop::createFreeTcpSocket, this));
   return tmp;
 }
 
-void EventLoop::createFreeSocket()
+void EventLoop::createFreeTcpSocket()
 {
   assertInLoopThread();
 
-  if (!freeSocket_.load())
+  if (!freeTcpSocket_.load())
   {
     uv_tcp_t *newSocket = new uv_tcp_t;
     int err = uv_tcp_init(&loop_, newSocket);
@@ -403,16 +409,16 @@ void EventLoop::createFreeSocket()
       LOG_SYSERR << uv_strerror(err) << " in EventLoop::createFreeSocket";
       return;
     }
-    freeSocket_.exchange(newSocket);
+    freeTcpSocket_.exchange(newSocket);
   }
 }
 
 void EventLoop::closeSocketInLoop( uv_tcp_t *socket )
 {
-  runInLoop(boost::bind(&EventLoop::closeSocket, this, socket));
+  runInLoop(boost::bind(&EventLoop::closeTcpSocket, this, socket));
 }
 
-void EventLoop::closeSocket(uv_tcp_t *socket)
+void EventLoop::closeTcpSocket(uv_tcp_t *socket)
 {
   assertInLoopThread();
   assert(socket);
@@ -425,3 +431,46 @@ void EventLoop::closeCallback( uv_handle_t *handle )
   assert(uv_is_closing(handle));
   delete handle;
 }
+
+uv_udp_t* EventLoop::getFreeUdpSocket()
+{
+  // FIXME(cbj): currently only one free socket available.
+  uv_udp_t *tmp = freeUdpSocket_.exchange(nullptr);
+  runInLoop(boost::bind(&EventLoop::createFreeUdpSocket, this));
+  return tmp;
+}
+
+void EventLoop::createFreeUdpSocket()
+{
+  assertInLoopThread();
+
+  if (!freeUdpSocket_.load())
+  {
+    uv_udp_t *newSocket = new uv_udp_t;
+    int err = uv_udp_init(&loop_, newSocket);
+    if (err)
+    {
+      LOG_SYSERR << uv_strerror(err) << " in EventLoop::createFreeSocket";
+      return;
+    }
+    freeUdpSocket_.exchange(newSocket);
+  }
+}
+
+void EventLoop::closeSocketInLoop( uv_udp_t *socket )
+{
+  assertInLoopThread();
+  assert(socket);
+  uv_close(reinterpret_cast<uv_handle_t*>(socket), 
+    &EventLoop::closeCallback);
+}
+
+void EventLoop::closeUdpSocket( uv_udp_t *socket )
+{
+  assertInLoopThread();
+  assert(socket);
+  uv_close(reinterpret_cast<uv_handle_t*>(socket), 
+    &EventLoop::closeCallback);
+}
+
+

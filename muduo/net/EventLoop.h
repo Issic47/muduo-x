@@ -139,8 +139,11 @@ class EventLoop : boost::noncopyable
   boost::any* getMutableContext()
   { return &context_; }
 
-  uv_tcp_t* getFreeSocket();
+  uv_tcp_t* getFreeTcpSocket();
   void closeSocketInLoop(uv_tcp_t *socket);
+
+  uv_udp_t* getFreeUdpSocket();
+  void closeSocketInLoop(uv_udp_t *socket);
 
   static EventLoop* getEventLoopOfCurrentThread();
 
@@ -154,8 +157,11 @@ class EventLoop : boost::noncopyable
   void abortNotInLoopThread();
   void doPendingFunctors();
 
-  void createFreeSocket();
-  void closeSocket(uv_tcp_t *socket);
+  void createFreeTcpSocket();
+  void closeTcpSocket(uv_tcp_t *socket);
+
+  void createFreeUdpSocket();
+  void closeUdpSocket(uv_udp_t *socket);
 
   //void printActiveChannels() const; // DEBUG
 
@@ -184,7 +190,8 @@ class EventLoop : boost::noncopyable
   //boost::scoped_ptr<Poller> poller_;
   boost::scoped_ptr<TimerQueue> timerQueue_;
 
-  std::atomic<uv_tcp_t*> freeSocket_;
+  std::atomic<uv_tcp_t*> freeTcpSocket_;
+  std::atomic<uv_udp_t*> freeUdpSocket_;
 
   boost::any context_;
 
