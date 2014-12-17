@@ -247,6 +247,7 @@ void UdpSocket::recvCallback(uv_udp_t *handle,
     {
       LOG_ERROR << "No enough buffer to hold the UDP package in UdpSocket::recvCallback";
     }
+    //TODO: UV_UDP_IPV6ONLY
     if (src == nullptr)
     {
       // There is nothing to read
@@ -264,4 +265,62 @@ void UdpSocket::recvCallback(uv_udp_t *handle,
   }
 }
 
+void UdpSocket::setBroadcast( bool on )
+{
+  int err = uv_udp_set_broadcast(socket_, on ? 1 : 0);
+  if (err)
+  {
+    LOG_SYSFATAL << uv_strerror(err) << " in UdpSocket::setBroadcast";
+  }
+}
+
+void UdpSocket::setMulticastLoop( bool on )
+{
+  int err = uv_udp_set_multicast_loop(socket_, on ? 1 : 0);
+  if (err)
+  {
+    LOG_SYSFATAL << uv_strerror(err) << " in UdpSocket::setMulticastLoop";
+  }
+}
+
+void UdpSocket::setMulticastTTL( int ttl )
+{
+  int err = uv_udp_set_multicast_ttl(socket_, ttl);
+  if (err)
+  {
+    LOG_SYSFATAL << uv_strerror(err) << " in UdpSocket::setMulticastTTL";
+  }
+}
+
+void muduo::net::UdpSocket::setTTL( int ttl )
+{
+  int err = uv_udp_set_ttl(socket_, ttl);
+  if (err)
+  {
+    LOG_SYSFATAL << uv_strerror(err) << " in UdpSocket::setTTL";
+  }
+}
+
+void UdpSocket::setMulticastInterface( const string& interfaceAddr )
+{
+  int err = uv_udp_set_multicast_interface(socket_, interfaceAddr.c_str());
+  if (err)
+  {
+    LOG_SYSFATAL << uv_strerror(err) << " in UdpSocket::setMulticastInterface";
+  }
+}
+
+void UdpSocket::setMemberShip(const string& multicastAddr,
+                              const string& interfaceAddr, 
+                              bool join)
+{
+  int err = uv_udp_set_membership(socket_, 
+                                  multicastAddr.c_str(),
+                                  interfaceAddr.c_str(),
+                                  join ? UV_JOIN_GROUP : UV_LEAVE_GROUP);
+  if (err)
+  {
+    LOG_SYSFATAL << uv_strerror(err) << " in UdpSocket::setMembership";
+  }
+}
 

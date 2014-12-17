@@ -37,8 +37,9 @@ class UdpSocket : boost::noncopyable,
   EventLoop* getLoop() const { return loop_; }
   const string& name() const { return name_; }
 
+  void setTTL(int ttl);
   void bind(const InetAddress &addr, bool reuseAddr);
-  void connect(const InetAddress &peerAddr);
+
   void startRecv();
   void stopRecv();
   InetAddress getLocalAddr() const;
@@ -50,6 +51,11 @@ class UdpSocket : boost::noncopyable,
   void send(const InetAddress& addr, Buffer* message);  // this one will swap data
 
   // TODO(cbj): add multicast
+  void setBroadcast(bool on);
+  void setMulticastLoop(bool on);
+  void setMulticastTTL(int ttl);
+  void setMulticastInterface(const string& interfaceAddr);
+  void setMemberShip(const string& multicastAddr, const string& interfaceAddr, bool join);
 
   /// Set message callback.
   /// Not thread safe.
