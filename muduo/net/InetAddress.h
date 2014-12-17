@@ -50,9 +50,13 @@ class InetAddress : public muduo::copyable
   /// @c ip should be "1.2.3.4"
   InetAddress(int af, StringArg ip, uint16_t port);
 
-  /// Constructs an endpoint with given struct @c sockaddr
+  /// Constructs an endpoint with given struct @c sa
   /// Mostly used when accepting new connections
   InetAddress(const struct sa& addr);
+
+  /// Constructs an endpoint with given struct @c sockaddr
+  /// Mostly used when receiving data in UDP
+  InetAddress(const struct sockaddr& addr);
 
   /// Constructs an endpoint with given struct @c sockaddr_in
   /// Mostly used when accepting new connections
