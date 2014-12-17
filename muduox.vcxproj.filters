@@ -129,7 +129,7 @@
     <ClCompile Include="muduo\net\TcpServer.cc">
       <Filter>net</Filter>
     </ClCompile>
-    <ClCompile Include="muduo\net\UdpCommunicator.cc">
+    <ClCompile Include="muduo\net\UdpSocket.cc">
       <Filter>net</Filter>
     </ClCompile>
   </ItemGroup>
@@ -293,7 +293,7 @@
     <ClInclude Include="muduo\net\ZlibStream.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="muduo\net\UdpCommunicator.h">
+    <ClInclude Include="muduo\net\UdpSocket.h">
       <Filter>net</Filter>
     </ClInclude>
   </ItemGroup>

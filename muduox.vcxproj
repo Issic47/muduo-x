@@ -225,7 +225,7 @@
     </ClCompile>
     <ClCompile Include="muduo\net\Timer.cc" />
     <ClCompile Include="muduo\net\TimerQueue.cc" />
-    <ClCompile Include="muduo\net\UdpCommunicator.cc">
+    <ClCompile Include="muduo\net\UdpSocket.cc">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </ExcludedFromBuild>
     </ClCompile>
@@ -393,7 +393,7 @@
     <ClInclude Include="muduo\net\Timer.h" />
     <ClInclude Include="muduo\net\TimerId.h" />
     <ClInclude Include="muduo\net\TimerQueue.h" />
-    <ClInclude Include="muduo\net\UdpCommunicator.h">
+    <ClInclude Include="muduo\net\UdpSocket.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </ExcludedFromBuild>
     </ClInclude>

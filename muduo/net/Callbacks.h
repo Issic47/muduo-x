@@ -43,14 +43,17 @@ namespace net
 class Buffer;
 class TcpConnection;
 class Timer;
+class UdpSocket;
+class InetAddress;
 typedef boost::shared_ptr<TcpConnection> TcpConnectionPtr;
 typedef boost::shared_ptr<Timer> TimerPtr;
+typedef boost::shared_ptr<UdpSocket> UdpSocketPtr;
+
 typedef boost::function<void()> TimerCallback;
 typedef boost::function<void (const TcpConnectionPtr&)> ConnectionCallback;
 typedef boost::function<void (const TcpConnectionPtr&)> CloseCallback;
 typedef boost::function<void (const TcpConnectionPtr&)> WriteCompleteCallback;
 typedef boost::function<void (const TcpConnectionPtr&, size_t)> HighWaterMarkCallback;
-
 // the data has been read to (buf, len)
 typedef boost::function<void (const TcpConnectionPtr&,
                               Buffer*,
@@ -60,6 +63,16 @@ void defaultConnectionCallback(const TcpConnectionPtr& conn);
 void defaultMessageCallback(const TcpConnectionPtr& conn,
                             Buffer* buffer,
                             Timestamp receiveTime);
+
+typedef boost::function<void (const UdpSocketPtr&)> UdpWriteCompleteCallback;
+typedef boost::function<void (const UdpSocketPtr&, size_t)> UdpHighWaterMarkCallback;
+
+typedef boost::function<void (const UdpSocketPtr&, 
+                              Buffer*,
+                              const InetAddress&, 
+                              Timestamp)> UdpMessageCallback;
+
+
 
 }
 }

@@ -1,11 +1,11 @@
-#ifndef MUDUO_NET_UDPCOMMUNICATOR_H
-#define MUDUO_NET_UDPCOMMUNICATOR_H
-
-#include <muduo/net/InetAddress.h>
-#include <muduo/net/Buffer.h>
+#ifndef MUDUO_NET_UDPSOCKET_H
+#define MUDUO_NET_UDPSOCKET_H
 
 #include <muduo/base/Atomic.h>
 #include <muduo/base/Types.h>
+#include <muduo/net/InetAddress.h>
+#include <muduo/net/Buffer.h>
+#include <muduo/net/Callbacks.h>
 
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
@@ -27,26 +27,21 @@ class EventLoop;
 /// TCP server, supports single-threaded and thread-pool models.
 ///
 /// This is an interface class, so don't expose too much details.
-class UdpCommunicator : boost::noncopyable,
-                        public boost::enable_shared_from_this<UdpCommunicator>
+class UdpSocket : boost::noncopyable,
+                  public boost::enable_shared_from_this<UdpSocket>
 {
  public:
-  UdpCommunicator(EventLoop* loop, const string& nameArg);
-  ~UdpCommunicator();
+  UdpSocket(EventLoop* loop, const string& nameArg);
+  ~UdpSocket();
 
   EventLoop* getLoop() const { return loop_; }
   const string& name() const { return name_; }
 
   void bind(const InetAddress &addr, bool reuseAddr);
-
-  // TODO: connect
-
-  /// Starts the server if it's not listenning.
-  ///
-  /// It's harmless to call it multiple times.
-  /// Thread safe.
+  void connect(const InetAddress &peerAddr);
   void startRecv();
   void stopRecv();
+  InetAddress getLocalAddr() const;
 
   // void send(const InetAddress& peerAddr, string&& message); // C++11
   void send(const InetAddress& addr, const void* message, int len);
@@ -54,57 +49,67 @@ class UdpCommunicator : boost::noncopyable,
   // void send(const InetAddress& peerAddr, Buffer&& message); // C++11
   void send(const InetAddress& addr, Buffer* message);  // this one will swap data
 
+  // TODO(cbj): add multicast
+
   /// Set message callback.
   /// Not thread safe.
-  void setMessageCallback(const MessageCallback& cb)
+  void setMessageCallback(const UdpMessageCallback& cb)
   { messageCallback_ = cb; }
 
   /// Set write complete callback.
   /// Not thread safe.
-  void setWriteCompleteCallback(const WriteCompleteCallback& cb)
+  void setWriteCompleteCallback(const UdpWriteCompleteCallback& cb)
   { writeCompleteCallback_ = cb; }
+
+  /// Set high watermark callback.
+  /// Not thread safe.
+  void setHighWatermarkCallback(const UdpHighWaterMarkCallback& cb)
+  { highWaterMarkCallback_ = cb; }
+
+  bool receiving() const { return receiving_; }
 
  private:
   typedef struct SendRequest
   {
-    boost::weak_ptr<UdpCommunicator> communicator;
+    boost::weak_ptr<UdpSocket> socket;
     uv_udp_send_t req;
     Buffer buf;
   } SendRequest;
 
-  static void allocCallback(uv_udp_t *handle, size_t suggestedSize, uv_buf_t *buf);
+  static void allocCallback(uv_handle_t *handle, size_t suggestedSize, uv_buf_t *buf);
   static void recvCallback(uv_udp_t *handle, 
-                           size_t nread, 
+                           ssize_t nread, 
                            const uv_buf_t *buf, 
                            const struct sockaddr *src, 
                            unsigned flag);
+
   static void sendCallback(uv_udp_send_t *req, int status);
   static void closeCallback(uv_handle_t *handle, int status);
-  // TODO: highwatermark
 
   void sendInLoop(const InetAddress &addr, const StringPiece& message);
   void sendInLoop(const InetAddress &addr, const void* message, size_t len);
 
   inline SendRequest* getFreeSendReq();
   inline void releaseSendReq(SendRequest *req);
+  void releaseAllSendReq();
 
-  EventLoop* loop_;  // the acceptor loop
+  EventLoop* loop_;
   uv_udp_t *socket_;
-  Buffer inputBuffer_;
-  const string hostport_;
   const string name_;
-  InetAddress localAddr_;
+  Buffer inputBuffer_;
   std::list<SendRequest*> freeSendReqList_;
-  MessageCallback messageCallback_;
-  WriteCompleteCallback writeCompleteCallback_;
+  UdpMessageCallback messageCallback_;
+  UdpWriteCompleteCallback writeCompleteCallback_;
+  UdpHighWaterMarkCallback highWaterMarkCallback_;
   size_t bytesInSend_;
-  AtomicInt32 started_;
-  AtomicInt32 messageId_;
+  size_t highWaterMark_;
+  //AtomicInt32 messageId_;
+  bool receiving_;
 };
 
-typedef boost::shared_ptr<UdpCommunicator> UdpCommunicatorPtr;
+typedef boost::shared_ptr<UdpSocket> UdpSocketPtr;
 
-UdpCommunicator::SendRequest* UdpCommunicator::getFreeSendReq()
+UdpSocket::SendRequest* UdpSocket::getFreeSendReq()
 {
   if (!freeSendReqList_.empty())
   {
@@ -118,13 +123,12 @@ UdpCommunicator::SendRequest* UdpCommunicator::getFreeSendReq()
   }
 }
 
-void UdpCommunicator::releaseSendReq(SendRequest *req)
+void UdpSocket::releaseSendReq(SendRequest *req)
 {
   freeSendReqList_.push_back(req);
 }
 
-
 } // namespace net
 } // namespace muduo
 
-#endif // MUDUO_NET_UDPCOMMUNICATOR_H
+#endif // MUDUO_NET_UDPSOCKET_H
