@@ -9,9 +9,17 @@
 using namespace muduo;
 using namespace muduo::net;
 
-UdpSocket::UdpSocket( EventLoop* loop, const string& nameArg )
+
+void defualtMessageCallback(const UdpSocketPtr& socket, 
+                            Buffer* buffer, 
+                            const InetAddress& srcAddr, 
+                            Timestamp receiveTimer)
+{
+  buffer->retrieveAll();
+}
+
+UdpSocket::UdpSocket(EventLoop* loop)
   : loop_(CHECK_NOTNULL(loop)),
-    name_(nameArg),
     bytesInSend_(0),
     highWaterMark_(64*1024*1024),
     inputBuffer_(65536),
@@ -19,6 +27,18 @@ UdpSocket::UdpSocket( EventLoop* loop, const string& nameArg )
 {
   socket_ = loop_->getFreeUdpSocket();
   socket_->data = this;
+}
+
+UdpSocket::UdpSocket( EventLoop* loop, const InetAddress& bindAddr, bool reuseAddr )
+  : loop_(CHECK_NOTNULL(loop)),
+  bytesInSend_(0),
+  highWaterMark_(64*1024*1024),
+  inputBuffer_(65536),
+  receiving_(false)
+{
+  socket_ = loop_->getFreeUdpSocket();
+  socket_->data = this;
+  bind(bindAddr, reuseAddr);
 }
 
 UdpSocket::~UdpSocket()
@@ -300,6 +320,8 @@ void muduo::net::UdpSocket::setTTL( int ttl )
     LOG_SYSFATAL << uv_strerror(err) << " in UdpSocket::setTTL";
   }
 }
+
+
 
 void UdpSocket::setMulticastInterface( const string& interfaceAddr )
 {

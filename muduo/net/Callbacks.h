@@ -72,6 +72,11 @@ typedef boost::function<void (const UdpSocketPtr&,
                               const InetAddress&, 
                               Timestamp)> UdpMessageCallback;
 
+void defualtMessageCallback(const UdpSocketPtr& socket,
+                            Buffer* buffer,
+                            const InetAddress& srcAddr,
+                            Timestamp receiveTimer);
+
 
 
 }

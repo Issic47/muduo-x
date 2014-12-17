@@ -31,11 +31,11 @@ class UdpSocket : boost::noncopyable,
                   public boost::enable_shared_from_this<UdpSocket>
 {
  public:
-  UdpSocket(EventLoop* loop, const string& nameArg);
+  UdpSocket(EventLoop* loop);
+  UdpSocket(EventLoop* loop, const InetAddress& bindAddr, bool reuseAddr);
   ~UdpSocket();
 
   EventLoop* getLoop() const { return loop_; }
-  const string& name() const { return name_; }
 
   void setTTL(int ttl);
   void bind(const InetAddress &addr, bool reuseAddr);
@@ -101,7 +101,6 @@ class UdpSocket : boost::noncopyable,
 
   EventLoop* loop_;
   uv_udp_t *socket_;
-  const string name_;
   Buffer inputBuffer_;
   std::list<SendRequest*> freeSendReqList_;
   UdpMessageCallback messageCallback_;
