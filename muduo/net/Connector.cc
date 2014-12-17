@@ -84,7 +84,7 @@ void Connector::connect()
 {
   if (nullptr == socket_)
   {
-    socket_ = loop_->getFreeSocket();
+    socket_ = loop_->getFreeTcpSocket();
     if (!socket_)
     {
       LOG_ERROR << " no free socket in Connector::connect";
