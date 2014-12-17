@@ -144,6 +144,7 @@ TcpConnection::~TcpConnection()
             << " fd=" << socket_->fd()
             << " state=" << state_;
   assert(state_ == kDisconnected);
+  socket_->setData(nullptr);
   loop_->closeSocketInLoop(socket_->socket());
   releaseAllFreeWriteReq();
 }
@@ -438,7 +439,7 @@ void TcpConnection::connectEstablished()
                                &TcpConnection::readCallback);
   if (err) 
   {
-    LOG_SYSERR << uv_strerror(err) << " in TcpConnection::connectEstablished";
+    LOG_SYSFATAL << uv_strerror(err) << " in TcpConnection::connectEstablished";
   }
 
   connectionCallback_(shared_from_this());
