@@ -78,6 +78,8 @@ class InetAddress : public muduo::copyable
   string toIpPort() const;
   uint16_t toPort() const;
 
+  int sa_family() const { return addr_.u.sa.sa_family; }
+
   // default copy/assignment are Okay
   const struct sockaddr& getSockAddr() const { return addr_.u.sa; }
 
@@ -104,6 +106,10 @@ class InetAddress : public muduo::copyable
   // thread safe
   static bool resolve(StringArg hostname, InetAddress* result);
   // static std::vector<InetAddress> resolveAll(const char* hostname, uint16_t port = 0);
+
+  friend bool operator==(const InetAddress& lhs, const InetAddress&rhs);
+  friend bool operator!=(const InetAddress& lhs, const InetAddress&rhs) 
+  { return !(lhs == rhs); }
 
  private:
    struct sa addr_;

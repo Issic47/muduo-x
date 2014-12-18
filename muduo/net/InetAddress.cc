@@ -231,3 +231,25 @@ bool InetAddress::resolve(StringArg hostname, InetAddress* out)
   //}
   return false;
 }
+
+bool muduo::net::operator==( const InetAddress& lhs, const InetAddress&rhs )
+{
+  if (lhs.sa_family() != rhs.sa_family())
+    return false;
+
+  switch (lhs.sa_family())
+  {
+  case AF_INET:
+    return (lhs.addr_.u.in.sin_port == rhs.addr_.u.in.sin_port &&
+        lhs.addr_.u.in.sin_addr.s_addr == rhs.addr_.u.in.sin_addr.s_addr);
+
+  case AF_INET6:
+    return (lhs.addr_.u.in6.sin6_port == rhs.addr_.u.in6.sin6_port &&
+            0 == memcmp(&lhs.addr_.u.in6.sin6_addr, &rhs.addr_.u.in6.sin6_addr, sizeof(in6_addr)));
+
+  default:
+    LOG_SYSERR << "No support address family:" << lhs.sa_family() 
+               << " in operator==(const InetAddress&, const InetAddress&)";
+    return false;
+  }
+}
