@@ -143,5 +143,11 @@
     <ClCompile Include="base\LogStream_test.cc">
       <Filter>base\passtest</Filter>
     </ClCompile>
+    <ClCompile Include="net\EchoUdpServer_unittest.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
+    <ClCompile Include="net\EchoUdpClient_unittest.cc">
+      <Filter>net\passtest</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
