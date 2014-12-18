@@ -111,6 +111,9 @@ EventLoop::EventLoop()
     err = uv_tcp_init(&loop_, freeTcpSocket_);
     if (err) break;
 
+    err = uv_udp_init(&loop_, freeUdpSocket_);
+    if (err) break;
+
   } while (false);
   
   if (err) 
@@ -154,6 +157,7 @@ void EventLoop::loopPrepareCallback( uv_prepare_t *handle )
   assert(handle->data);
   EventLoop *loop = static_cast<EventLoop*>(handle->data);
   ++loop->iteration_;
+  loop->doPendingFunctors();
 }
 
 void EventLoop::loopCheckCallback( uv_check_t *handle )
