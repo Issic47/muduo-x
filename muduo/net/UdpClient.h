@@ -1,79 +1,74 @@
 #ifndef MUDUO_NET_UDPCLIENT_H
 #define MUDUO_NET_UDPCLIENT_H
 
-#include <boost/noncopyable.hpp>
-
+#include <muduo/base/Types.h>
 #include <muduo/base/Mutex.h>
+#include <muduo/base/Atomic.h>
+#include <muduo/net/Callbacks.h>
+#include <muduo/net/InetAddress.h>
+
+#include <boost/noncopyable.hpp>
 
 namespace muduo
 {
 namespace net
 {
 
+class EventLoop;
+
 class UdpClient : boost::noncopyable
 {
 public:
-  // TcpClient(EventLoop* loop);
-  // TcpClient(EventLoop* loop, const string& host, uint16_t port);
   UdpClient(EventLoop* loop,
-    const InetAddress& serverAddr,
-    const string& name);
-  ~UdpClient();  // force out-line dtor, for scoped_ptr members.
+            const InetAddress& serverAddr,
+            const string& name);
+  ~UdpClient();
 
   void connect();
   void disconnect();
-  void stop();
 
-  TcpConnectionPtr connection() const
-  {
-    MutexLockGuard lock(mutex_);
-    return connection_;
-  }
-
+  UdpSocketPtr socket() const { return socket_; }
   EventLoop* getLoop() const { return loop_; }
-  bool retry() const;
-  void enableRetry() { retry_ = true; }
-
-  /// Set connection callback.
-  /// Not thread safe.
-  void setConnectionCallback(const ConnectionCallback& cb)
-  { connectionCallback_ = cb; }
+  const string& name() const { return name_; }
 
   /// Set message callback.
   /// Not thread safe.
-  void setMessageCallback(const MessageCallback& cb)
+  void setMessageCallback(const UdpMessageCallback& cb)
   { messageCallback_ = cb; }
+
+  void setMessageCallback(UdpMessageCallback&& cb)
+  { messageCallback_ = std::move(cb); }
 
   /// Set write complete callback.
   /// Not thread safe.
-  void setWriteCompleteCallback(const WriteCompleteCallback& cb)
+  void setWriteCompleteCallback(const UdpWriteCompleteCallback& cb)
   { writeCompleteCallback_ = cb; }
 
-  void setConnectionCallback(ConnectionCallback&& cb)
-  { connectionCallback_ = std::move(cb); }
-  void setMessageCallback(MessageCallback&& cb)
-  { messageCallback_ = std::move(cb); }
-  void setWriteCompleteCallback(WriteCompleteCallback&& cb)
+  void setWriteCompleteCallback(UdpWriteCompleteCallback&& cb)
   { writeCompleteCallback_ = std::move(cb); }
 
-private:
-  /// Not thread safe, but in loop
-  void newConnection(uv_tcp_t *socket);
-  /// Not thread safe, but in loop
-  void removeConnection(const TcpConnectionPtr& conn);
+  void setHighWaterMarkCallback(const UdpHighWaterMarkCallback& cb)
+  { highWaterMarkCallback_ = cb; }
 
+  void setHighWaterMarkCallback(UdpHighWaterMarkCallback&& cb)
+  { highWaterMarkCallback_ = std::move(cb); }
+
+  void setStartedRecvCallback(const UdpStartedRecvCallback& cb)
+  { startedRecvCallback_ = cb; }
+
+  void setStartedRecvCallback(UdpStartedRecvCallback&& cb)
+  { startedRecvCallback_ = std::move(cb); }
+
+private:
   EventLoop* loop_;
-  ConnectorPtr connector_; // avoid revealing Connector
   const string name_;
-  ConnectionCallback connectionCallback_;
-  MessageCallback messageCallback_;
-  WriteCompleteCallback writeCompleteCallback_;
-  bool retry_;   // atomic
-  bool connect_; // atomic
-  // always in loop thread
-  int nextConnId_;
-  mutable MutexLock mutex_;
-  TcpConnectionPtr connection_; // @GuardedBy mutex_
+  InetAddress peerAddr_;
+  UdpMessageCallback messageCallback_;
+  UdpWriteCompleteCallback writeCompleteCallback_;
+  UdpHighWaterMarkCallback highWaterMarkCallback_;
+  UdpStartedRecvCallback startedRecvCallback_;
+  AtomicInt32 connect_;
+  UdpSocketPtr socket_;
 };
 
 }

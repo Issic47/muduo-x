@@ -40,15 +40,26 @@ class UdpSocket : boost::noncopyable,
   void setTTL(int ttl);
   void bind(const InetAddress &addr, bool reuseAddr);
 
+  void connect(const InetAddress &peerAddr) 
+  { connectModel_ = true; peerAddr_ = peerAddr; }
+
   void startRecv();
   void stopRecv();
   InetAddress getLocalAddr() const;
 
+  const InetAddress &getPeerAddr() const 
+  { assert(connectModel_); return peerAddr_; }
+
+  // work only in connect model
+  int send(const void* message, int len);
+  int send(const StringPiece& message);
+  int send(Buffer* message);
+
   // void send(const InetAddress& peerAddr, string&& message); // C++11
-  void send(const InetAddress& addr, const void* message, int len);
-  void send(const InetAddress& addr, const StringPiece& message);
+  int send(const InetAddress& addr, const void* message, int len);
+  int send(const InetAddress& addr, const StringPiece& message);
   // void send(const InetAddress& peerAddr, Buffer&& message); // C++11
-  void send(const InetAddress& addr, Buffer* message);  // this one will swap data
+  int send(const InetAddress& addr, Buffer* message);  // this one will swap data
 
   // TODO(cbj): add multicast
   void setBroadcast(bool on);
@@ -72,6 +83,9 @@ class UdpSocket : boost::noncopyable,
   void setHighWatermarkCallback(const UdpHighWaterMarkCallback& cb)
   { highWaterMarkCallback_ = cb; }
 
+  void setStartedRecvCallback(const UdpStartedRecvCallback& cb)
+  { startedRecvCallback_ = cb; }
+
   bool receiving() const { return receiving_; }
 
  private:
@@ -80,6 +94,7 @@ class UdpSocket : boost::noncopyable,
     boost::weak_ptr<UdpSocket> socket;
     uv_udp_send_t req;
     Buffer buf;
+    int messageId;
   } SendRequest;
 
   static void allocCallback(uv_handle_t *handle, size_t suggestedSize, uv_buf_t *buf);
@@ -92,8 +107,8 @@ class UdpSocket : boost::noncopyable,
   static void sendCallback(uv_udp_send_t *req, int status);
   static void closeCallback(uv_handle_t *handle, int status);
 
-  void sendInLoop(const InetAddress &addr, const StringPiece& message);
-  void sendInLoop(const InetAddress &addr, const void* message, size_t len);
+  void sendInLoop(int messageId, const InetAddress &addr, const StringPiece& message);
+  void sendInLoop(int messageId, const InetAddress &addr, const void* message, size_t len);
 
   inline SendRequest* getFreeSendReq();
   inline void releaseSendReq(SendRequest *req);
@@ -105,10 +120,13 @@ class UdpSocket : boost::noncopyable,
   std::list<SendRequest*> freeSendReqList_;
   UdpMessageCallback messageCallback_;
   UdpWriteCompleteCallback writeCompleteCallback_;
+  UdpStartedRecvCallback startedRecvCallback_;
   UdpHighWaterMarkCallback highWaterMarkCallback_;
   size_t bytesInSend_;
   size_t highWaterMark_;
-  //AtomicInt32 messageId_;
+  InetAddress peerAddr_;
+  bool connectModel_;
+  AtomicInt32 messageId_;
   bool receiving_;
 };
 

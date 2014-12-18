@@ -10,10 +10,10 @@ using namespace muduo;
 using namespace muduo::net;
 
 
-void defualtMessageCallback(const UdpSocketPtr& socket, 
-                            Buffer* buffer, 
-                            const InetAddress& srcAddr, 
-                            Timestamp receiveTimer)
+void muduo::net::defaultUdpMessageCallback(const UdpSocketPtr& socket, 
+                                           Buffer* buffer, 
+                                           const InetAddress& srcAddr, 
+                                           Timestamp receiveTimer)
 {
   buffer->retrieveAll();
 }
@@ -23,7 +23,8 @@ UdpSocket::UdpSocket(EventLoop* loop)
     bytesInSend_(0),
     highWaterMark_(64*1024*1024),
     inputBuffer_(65536),
-    receiving_(false)
+    receiving_(false),
+    connectModel_(false)
 {
   socket_ = loop_->getFreeUdpSocket();
   socket_->data = this;
@@ -34,7 +35,8 @@ UdpSocket::UdpSocket( EventLoop* loop, const InetAddress& bindAddr, bool reuseAd
   bytesInSend_(0),
   highWaterMark_(64*1024*1024),
   inputBuffer_(65536),
-  receiving_(false)
+  receiving_(false),
+  connectModel_(false)
 {
   socket_ = loop_->getFreeUdpSocket();
   socket_->data = this;
@@ -80,33 +82,55 @@ void UdpSocket::bind( const InetAddress &addr, bool reuseAddr )
   }
 }
 
-void UdpSocket::send(const InetAddress& addr, const void* data, int len)
+int UdpSocket::send( const StringPiece& message )
 {
-  send(addr, StringPiece(static_cast<const char*>(data), len));
+  assert(connectModel_);
+  return send(peerAddr_, message);
 }
 
-void UdpSocket::send(const InetAddress& addr, const StringPiece& message)
+int UdpSocket::send( const void* data, int len )
 {
+  assert(connectModel_);
+  return send(peerAddr_, StringPiece(static_cast<const char*>(data), len));
+}
+
+int UdpSocket::send( Buffer* buf )
+{
+  assert(connectModel_);
+  return send(peerAddr_, buf);
+}
+
+int UdpSocket::send(const InetAddress& addr, const void* data, int len)
+{
+  return send(addr, StringPiece(static_cast<const char*>(data), len));
+}
+
+int UdpSocket::send(const InetAddress& addr, const StringPiece& message)
+{
+  int messageId = messageId_.incrementAndGet();
   if (loop_->isInLoopThread())
   {
-    sendInLoop(addr, message);
+    sendInLoop(messageId, addr, message);
   }
   else
   {
     loop_->runInLoop(
       boost::bind(&UdpSocket::sendInLoop,
                   this, // FIXME
+                  messageId,
                   InetAddress(addr),
                   message.as_string()));
                   //std::forward<string>(message)));
   }
+  return messageId;
 }
 
-void UdpSocket::send(const InetAddress& addr, Buffer* buf)
+int UdpSocket::send(const InetAddress& addr, Buffer* buf)
 {
+  int messageId = messageId_.incrementAndGet();
   if (loop_->isInLoopThread())
   {
-    sendInLoop(addr, buf->peek(), buf->readableBytes());
+    sendInLoop(messageId, addr, buf->peek(), buf->readableBytes());
     buf->retrieveAll();
   }
   else
@@ -114,18 +138,20 @@ void UdpSocket::send(const InetAddress& addr, Buffer* buf)
     loop_->runInLoop(
       boost::bind(&UdpSocket::sendInLoop,
                   this, // FIXME
+                  messageId,
                   InetAddress(addr),
                   buf->retrieveAllAsString()));
                   //std::forward<string>(message)));
   }
+  return messageId;
 }
 
-void UdpSocket::sendInLoop(const InetAddress& addr, const StringPiece& message)
+void UdpSocket::sendInLoop(int messageId, const InetAddress& addr, const StringPiece& message)
 {
-  sendInLoop(addr, message.data(), message.size());
+  sendInLoop(messageId, addr, message.data(), message.size());
 }
 
-void UdpSocket::sendInLoop(const InetAddress& addr, const void* data, size_t len)
+void UdpSocket::sendInLoop(int messageId, const InetAddress& addr, const void* data, size_t len)
 {
   loop_->assertInLoopThread();
   uv_buf_t buf = uv_buf_init(static_cast<char*>(const_cast<void*>(data)), len);
@@ -139,7 +165,7 @@ void UdpSocket::sendInLoop(const InetAddress& addr, const void* data, size_t len
     }
     if (writeCompleteCallback_)
     {
-      loop_->queueInLoop(boost::bind(writeCompleteCallback_, shared_from_this()));
+      loop_->queueInLoop(boost::bind(writeCompleteCallback_, shared_from_this(), messageId));
     }
   }
   else
@@ -167,6 +193,7 @@ void UdpSocket::sendInLoop(const InetAddress& addr, const void* data, size_t len
     sendRequest->socket = shared_from_this();
     sendRequest->req.data = sendRequest;
     sendRequest->buf.ensureWritableBytes(len);
+    sendRequest->messageId = messageId;
     uv_buf_t buf = uv_buf_init(sendRequest->buf.beginWrite(), len);
     sendRequest->buf.append(data, len);
     int err = uv_udp_send(&sendRequest->req, 
@@ -197,12 +224,12 @@ void UdpSocket::sendCallback( uv_udp_send_t *req, int status )
   {
     socket->bytesInSend_ -= sendRequest->buf.readableBytes();
     sendRequest->buf.retrieveAll();
-    socket->releaseSendReq(sendRequest);
     if (socket->writeCompleteCallback_)
     {
       socket->loop_->queueInLoop(
-        boost::bind(socket->writeCompleteCallback_, socket));
+        boost::bind(socket->writeCompleteCallback_, socket, sendRequest->messageId));
     }
+    socket->releaseSendReq(sendRequest);
   }
   else
   {
@@ -223,6 +250,10 @@ void UdpSocket::startRecv()
       LOG_SYSFATAL << uv_strerror(err) << " in UdpSocket::startRecv";
     }
     receiving_ = true;
+    if (startedRecvCallback_)
+    {
+      loop_->queueInLoop(boost::bind(startedRecvCallback_, shared_from_this()));
+    }
   }
 }
 
@@ -262,12 +293,11 @@ void UdpSocket::recvCallback(uv_udp_t *handle,
   }
   else
   {
-    socket->inputBuffer_.hasWritten(nread);
     if (flag == UV_UDP_PARTIAL)
     {
-      LOG_ERROR << "No enough buffer to hold the UDP package in UdpSocket::recvCallback";
+      LOG_ERROR << "Input buffer is no big enough to hold the UDP package in UdpSocket::recvCallback";
     }
-    //TODO: UV_UDP_IPV6ONLY
+    // TODO: UV_UDP_IPV6ONLY
     if (src == nullptr)
     {
       // There is nothing to read
@@ -276,10 +306,17 @@ void UdpSocket::recvCallback(uv_udp_t *handle,
     }
     else
     {
+      InetAddress srcAddress(*src);
+      if (socket->connectModel_ && socket->peerAddr_ != srcAddress)
+      {
+        LOG_INFO << "Ignore UDP data from " << srcAddress.toIpPort();
+        return;
+      }
+      socket->inputBuffer_.hasWritten(nread);
       socket->messageCallback_(
         socket->shared_from_this(),
         &socket->inputBuffer_, 
-        InetAddress(*src),
+        srcAddress,
         socket->loop_->pollReturnTime());
     }
   }
@@ -320,8 +357,6 @@ void muduo::net::UdpSocket::setTTL( int ttl )
     LOG_SYSFATAL << uv_strerror(err) << " in UdpSocket::setTTL";
   }
 }
-
-
 
 void UdpSocket::setMulticastInterface( const string& interfaceAddr )
 {

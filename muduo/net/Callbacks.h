@@ -64,7 +64,8 @@ void defaultMessageCallback(const TcpConnectionPtr& conn,
                             Buffer* buffer,
                             Timestamp receiveTime);
 
-typedef boost::function<void (const UdpSocketPtr&)> UdpWriteCompleteCallback;
+typedef boost::function<void (const UdpSocketPtr&)> UdpStartedRecvCallback;
+typedef boost::function<void (const UdpSocketPtr&, int)> UdpWriteCompleteCallback;
 typedef boost::function<void (const UdpSocketPtr&, size_t)> UdpHighWaterMarkCallback;
 
 typedef boost::function<void (const UdpSocketPtr&, 
@@ -72,10 +73,10 @@ typedef boost::function<void (const UdpSocketPtr&,
                               const InetAddress&, 
                               Timestamp)> UdpMessageCallback;
 
-void defualtMessageCallback(const UdpSocketPtr& socket,
-                            Buffer* buffer,
-                            const InetAddress& srcAddr,
-                            Timestamp receiveTimer);
+void defaultUdpMessageCallback(const UdpSocketPtr& socket,
+                               Buffer* buffer,
+                               const InetAddress& srcAddr,
+                               Timestamp receiveTimer);
 
 
 
