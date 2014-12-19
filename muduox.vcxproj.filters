@@ -13,6 +13,18 @@
     <Filter Include="net\poller">
       <UniqueIdentifier>{536fb232-9012-42a6-90c1-d959d43ae9f4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="net\http">
+      <UniqueIdentifier>{a1122abd-3ee8-4f1d-a4cd-1cca7a200be1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="net\inspect">
+      <UniqueIdentifier>{038567ce-3d3a-47ea-bc18-65773e433def}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="net\protobuf">
+      <UniqueIdentifier>{e6d086a5-f1d8-41c0-98a2-a827795b0955}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="net\protorpc">
+      <UniqueIdentifier>{1225da0a-4b09-4ea6-bb4d-af9aa0e86d3c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="muduo\base\AsyncLogging.cc">
@@ -137,6 +149,39 @@
     </ClCompile>
     <ClCompile Include="muduo\net\UdpClient.cc">
       <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\http\HttpResponse.cc">
+      <Filter>net\http</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\http\HttpServer.cc">
+      <Filter>net\http</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\inspect\Inspector.cc">
+      <Filter>net\inspect</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\inspect\PerformanceInspector.cc">
+      <Filter>net\inspect</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\inspect\ProcessInspector.cc">
+      <Filter>net\inspect</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\inspect\SystemInspector.cc">
+      <Filter>net\inspect</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\protobuf\ProtobufCodecLite.cc">
+      <Filter>net\protobuf</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\protorpc\RpcChannel.cc">
+      <Filter>net\protorpc</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\protorpc\RpcCodec.cc">
+      <Filter>net\protorpc</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\protorpc\RpcCodec_test.cc">
+      <Filter>net\protorpc</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\protorpc\RpcServer.cc">
+      <Filter>net\protorpc</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -307,6 +352,48 @@
     </ClInclude>
     <ClInclude Include="muduo\net\UdpClient.h">
       <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\http\HttpContext.h">
+      <Filter>net\http</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\http\HttpRequest.h">
+      <Filter>net\http</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\http\HttpResponse.h">
+      <Filter>net\http</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\http\HttpServer.h">
+      <Filter>net\http</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\inspect\Inspector.h">
+      <Filter>net\inspect</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\inspect\PerformanceInspector.h">
+      <Filter>net\inspect</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\inspect\ProcessInspector.h">
+      <Filter>net\inspect</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\inspect\SystemInspector.h">
+      <Filter>net\inspect</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\protobuf\BufferStream.h">
+      <Filter>net\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\protobuf\ProtobufCodecLite.h">
+      <Filter>net\protobuf</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\protorpc\google-inl.h">
+      <Filter>net\protorpc</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\protorpc\RpcChannel.h">
+      <Filter>net\protorpc</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\protorpc\RpcCodec.h">
+      <Filter>net\protorpc</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\protorpc\RpcServer.h">
+      <Filter>net\protorpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
