@@ -236,7 +236,7 @@
     <ClCompile Include="muduo\net\protorpc\RpcServer.cc">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="muduo\net\Socket.cc" />
+    <ClCompile Include="muduo\net\TcpSocket.cc" />
     <ClCompile Include="muduo\net\SocketsOps.cc">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
@@ -439,7 +439,7 @@
     <ClInclude Include="muduo\net\protorpc\RpcServer.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="muduo\net\Socket.h" />
+    <ClInclude Include="muduo\net\TcpSocket.h" />
     <ClInclude Include="muduo\net\SocketsOps.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClInclude>

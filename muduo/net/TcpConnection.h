@@ -34,7 +34,7 @@ namespace net
 {
 
 class EventLoop;
-class Socket;
+class TcpSocket;
 class OutputBuffer;
 
 ///
@@ -163,7 +163,7 @@ class TcpConnection : boost::noncopyable,
   const string name_;
   StateE state_;  // FIXME: use atomic variable
   // we don't expose those classes to client.
-  boost::scoped_ptr<Socket> socket_;
+  boost::scoped_ptr<TcpSocket> socket_;
   const InetAddress localAddr_;
   const InetAddress peerAddr_;
   ConnectionCallback connectionCallback_;

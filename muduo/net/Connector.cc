@@ -11,7 +11,7 @@
 
 #include <muduo/base/Logging.h>
 #include <muduo/net/EventLoop.h>
-#include <muduo/net/Socket.h>
+#include <muduo/net/TcpSocket.h>
 //#include <muduo/net/SocketsOps.h>
 
 #include <boost/bind.hpp>
@@ -126,7 +126,7 @@ void Connector::onConnectCallback( uv_connect_t *req, int status )
         LOG_SYSERR << uv_strerror(status) << " in Connector::onConnectCallback";
         connector->handleConnectError(status);
       }
-      else if (Socket::isSelfConnect(connector->socket_))
+      else if (TcpSocket::isSelfConnect(connector->socket_))
       {
         LOG_WARN << "self connect in Connector::onConnectCallback";
         connector->retry();

@@ -11,7 +11,7 @@
 #include <muduo/base/Logging.h>
 #include <muduo/base/WeakCallback.h>
 #include <muduo/net/EventLoop.h>
-#include <muduo/net/Socket.h>
+#include <muduo/net/TcpSocket.h>
 
 #include <boost/bind.hpp>
 
@@ -122,7 +122,7 @@ TcpConnection::TcpConnection(const string& nameArg,
   : loop_(nullptr),
     name_(nameArg),
     state_(kConnecting),
-    socket_(new Socket(CHECK_NOTNULL(socket))),
+    socket_(new TcpSocket(CHECK_NOTNULL(socket))),
     localAddr_(localAddr),
     peerAddr_(peerAddr),
     highWaterMark_(64*1024*1024),

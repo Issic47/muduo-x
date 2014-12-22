@@ -6,7 +6,7 @@
 
 // Author: Shuo Chen (chenshuo at chenshuo dot com), Bijin Chen
 
-#include <muduo/net/Socket.h>
+#include <muduo/net/TcpSocket.h>
 
 #include <muduo/base/Logging.h>
 #include <muduo/net/InetAddress.h>
@@ -22,16 +22,16 @@ using namespace muduo;
 using namespace muduo::net;
 
 
-Socket::Socket( uv_tcp_t *socket ) 
+TcpSocket::TcpSocket( uv_tcp_t *socket ) 
   : socket_(CHECK_NOTNULL(socket))
 {
 }
 
-Socket::~Socket()
+TcpSocket::~TcpSocket()
 {
 }
 
-uv_os_sock_t Socket::fd() const
+uv_os_sock_t TcpSocket::fd() const
 {
   uv_os_fd_t fd;
   int err = uv_fileno(
@@ -42,7 +42,7 @@ uv_os_sock_t Socket::fd() const
 }
 
 
-bool Socket::getTcpInfo(struct tcp_info* tcpi) const
+bool TcpSocket::getTcpInfo(struct tcp_info* tcpi) const
 {
 #ifdef TCP_INFO
   socklen_t len = sizeof(*tcpi);
@@ -53,7 +53,7 @@ bool Socket::getTcpInfo(struct tcp_info* tcpi) const
 #endif
 }
 
-bool Socket::getTcpInfoString(char* buf, int len) const
+bool TcpSocket::getTcpInfoString(char* buf, int len) const
 {
 #ifdef TCP_INFO
   struct tcp_info tcpi;
@@ -84,7 +84,7 @@ bool Socket::getTcpInfoString(char* buf, int len) const
 #endif
 }
 
-void Socket::bindAddress(const InetAddress& localaddr, bool ipv6Only /*= false*/)
+void TcpSocket::bindAddress(const InetAddress& localaddr, bool ipv6Only /*= false*/)
 {
   int err = uv_tcp_bind(socket_, &localaddr.getSockAddr(), 
     ipv6Only ? UV_TCP_IPV6ONLY : 0);
@@ -94,14 +94,14 @@ void Socket::bindAddress(const InetAddress& localaddr, bool ipv6Only /*= false*/
   }
 }
 
-void Socket::setSimultaneousAccept( bool on )
+void TcpSocket::setSimultaneousAccept( bool on )
 {
   int err = uv_tcp_simultaneous_accepts(socket_, on);
   if (err)
     LOG_SYSFATAL << uv_strerror(err) << " in Socket::setSimultaneousAccept";
 }
 
-void Socket::listen(uv_connection_cb cb)
+void TcpSocket::listen(uv_connection_cb cb)
 {
   int err = uv_listen(reinterpret_cast<uv_stream_t*>(socket_), 
                       SOMAXCONN, 
@@ -110,7 +110,7 @@ void Socket::listen(uv_connection_cb cb)
     LOG_SYSFATAL << uv_strerror(err) << " in Socket::listen";
 }
 
-int Socket::accept( uv_tcp_t *client, InetAddress* peeraddr )
+int TcpSocket::accept( uv_tcp_t *client, InetAddress* peeraddr )
 {
   int err = 0;
   do 
@@ -140,7 +140,7 @@ int Socket::accept( uv_tcp_t *client, InetAddress* peeraddr )
   return err;
 }
 
-void Socket::shutdownWrite(uv_shutdown_t *req, uv_shutdown_cb cb)
+void TcpSocket::shutdownWrite(uv_shutdown_t *req, uv_shutdown_cb cb)
 {
   int err = uv_shutdown(req, reinterpret_cast<uv_stream_t*>(socket_), cb);
   if (err) 
@@ -149,14 +149,14 @@ void Socket::shutdownWrite(uv_shutdown_t *req, uv_shutdown_cb cb)
   }
 }
 
-void Socket::setTcpNoDelay(bool on)
+void TcpSocket::setTcpNoDelay(bool on)
 {
   int err = uv_tcp_nodelay(socket_, on);
   if (err)
     LOG_SYSFATAL << uv_strerror(err) << " in Socket::setTcpNoDelay";
 }
 
-void Socket::setReuseAddr(bool on)
+void TcpSocket::setReuseAddr(bool on)
 {
   // In Unix-like system, socket is set SO_RESUSEADDR when binding.
   // In Windows, socket is not set SO_RESUSE_ADDR or SO_EXCLUSIVEADDREUSE when binding.
@@ -170,7 +170,7 @@ void Socket::setReuseAddr(bool on)
 #endif
 }
 
-void Socket::setReusePort(bool on)
+void TcpSocket::setReusePort(bool on)
 {
 #ifdef SO_REUSEPORT
   int optval = on ? 1 : 0;
@@ -188,7 +188,7 @@ void Socket::setReusePort(bool on)
 #endif
 }
 
-void Socket::setKeepAlive(bool on)
+void TcpSocket::setKeepAlive(bool on)
 {
   // WARNING: In libuv 1.0.1, delay is set to 60 when binding.
   int err = uv_tcp_keepalive(socket_, on, 60);
@@ -196,15 +196,15 @@ void Socket::setKeepAlive(bool on)
     LOG_SYSFATAL << uv_strerror(err) << " in Socket::setKeepAlive";
 }
 
-bool Socket::isSelfConnect(uv_tcp_t *socket)
+bool TcpSocket::isSelfConnect(uv_tcp_t *socket)
 {
   int err = 0;
   bool selfConnect = false;
 
   do
   {
-    struct sa localAddr = Socket::getLocalAddr(socket);
-    struct sa peerAddr = Socket::getPeerAddr(socket);
+    struct sa localAddr = TcpSocket::getLocalAddr(socket);
+    struct sa peerAddr = TcpSocket::getPeerAddr(socket);
     if (localAddr.u.sa.sa_family != peerAddr.u.sa.sa_family)
       break;
 
@@ -230,7 +230,7 @@ bool Socket::isSelfConnect(uv_tcp_t *socket)
 }
 
 
-struct sa Socket::getLocalAddr( uv_tcp_t *socket )
+struct sa TcpSocket::getLocalAddr( uv_tcp_t *socket )
 {
   struct sa localAddr;
   int localLen = sizeof localAddr;
@@ -242,7 +242,7 @@ struct sa Socket::getLocalAddr( uv_tcp_t *socket )
   return localAddr;
 }
 
-struct sa Socket::getPeerAddr( uv_tcp_t *socket )
+struct sa TcpSocket::getPeerAddr( uv_tcp_t *socket )
 {
   struct sa peerAddr;
   int localLen = sizeof peerAddr;

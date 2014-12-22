@@ -33,15 +33,15 @@ class EventLoop;
 ///
 /// It closes the sockfd when desctructs.
 /// It's thread safe, all operations are delagated to OS.
-class Socket : boost::noncopyable
+class TcpSocket : boost::noncopyable
 {
  public:
   // Socket instance will own this socket
-  explicit Socket(uv_tcp_t *socket);
+  explicit TcpSocket(uv_tcp_t *socket);
 
   // Socket(Socket &&other);
 
-  ~Socket();
+  ~TcpSocket();
 
   static bool isSelfConnect(uv_tcp_t *socket);
   static struct sa getLocalAddr(uv_tcp_t *socket);

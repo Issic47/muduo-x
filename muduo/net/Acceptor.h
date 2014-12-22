@@ -14,7 +14,7 @@
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
 
-#include <muduo/net/Socket.h>
+#include <muduo/net/TcpSocket.h>
 
 namespace muduo
 {
@@ -51,7 +51,7 @@ class Acceptor : boost::noncopyable
   static void onNewConnectionCallback(uv_stream_t *server, int status);
 
   EventLoop* loop_;
-  Socket acceptSocket_;
+  TcpSocket acceptSocket_;
   NewConnectionCallback newConnectionCallback_;
   NextEventLoopCallback nextEventLoopCallback_;
   bool listenning_;

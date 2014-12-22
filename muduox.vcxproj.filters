@@ -129,9 +129,6 @@
     <ClCompile Include="muduo\net\EventLoopThreadPool.cc">
       <Filter>net</Filter>
     </ClCompile>
-    <ClCompile Include="muduo\net\Socket.cc">
-      <Filter>net</Filter>
-    </ClCompile>
     <ClCompile Include="muduo\net\TcpClient.cc">
       <Filter>net</Filter>
     </ClCompile>
@@ -182,6 +179,9 @@
     </ClCompile>
     <ClCompile Include="muduo\net\protorpc\RpcServer.cc">
       <Filter>net\protorpc</Filter>
+    </ClCompile>
+    <ClCompile Include="muduo\net\TcpSocket.cc">
+      <Filter>net</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -329,9 +329,6 @@
     <ClInclude Include="muduo\net\EventLoopThreadPool.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="muduo\net\Socket.h">
-      <Filter>net</Filter>
-    </ClInclude>
     <ClInclude Include="muduo\net\TcpClient.h">
       <Filter>net</Filter>
     </ClInclude>
@@ -394,6 +391,9 @@
     </ClInclude>
     <ClInclude Include="muduo\net\protorpc\RpcServer.h">
       <Filter>net\protorpc</Filter>
+    </ClInclude>
+    <ClInclude Include="muduo\net\TcpSocket.h">
+      <Filter>net</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
