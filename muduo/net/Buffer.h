@@ -60,8 +60,8 @@ class Buffer : public muduo::copyable
       readerIndex_(buf.readerIndex_),
       writerIndex_(buf.writerIndex_)
   {
-    buf.readerIndex_ = 0;
-    buf.writerIndex_ = 0;
+    buf.readerIndex_ = kCheapPrepend;
+    buf.writerIndex_ = kCheapPrepend;
   }
 
   // implicit copy-ctor, move-ctor, dtor and assignment are fine

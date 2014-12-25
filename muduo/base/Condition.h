@@ -37,6 +37,9 @@ class Condition : boost::noncopyable
   // returns true if time out, false otherwise.
   bool waitForSeconds(int seconds);
 
+  // returns true if time out, false otherwise.
+  bool waitForMilliSeconds(int milliseconds);
+
   void notify()
   {
     uv_cond_signal(&pcond_);
