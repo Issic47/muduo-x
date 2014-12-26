@@ -97,6 +97,9 @@ class InetAddress : public muduo::copyable
     addr_.len = sizeof(addr);
   }
 
+  const struct sa& getRawSockAddr() const { return addr_; }
+  struct sa& getRawSockAddr() { return addr_; }
+
   uint32_t ip4NetEndian() const { return addr_.u.in.sin_addr.s_addr; }
   struct in6_addr ip6NetEndian() const { return addr_.u.in6.sin6_addr; }
   uint16_t portNetEndian() const { return addr_.u.in.sin_port; }
