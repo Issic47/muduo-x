@@ -30,6 +30,7 @@ public:
   UdpSocketPtr socket() const { return socket_; }
   EventLoop* getLoop() const { return loop_; }
   const string& name() const { return name_; }
+  bool isConnected() { return connect_.get() == 1; }
 
   /// Set message callback.
   /// Not thread safe.
