@@ -35,6 +35,7 @@ void UdpServer::start()
     socket_->setMessageCallback(messageCallback_);
     socket_->setWriteCompleteCallback(writeCompleteCallback_);
     socket_->setHighWatermarkCallback(highWaterMarkCallback_);
+    socket_->setStartedRecvCallback(startedRecvCallback_);
     loop_->runInLoop(boost::bind(&UdpSocket::startRecv, get_pointer(socket_)));
   }
 }

@@ -74,6 +74,12 @@ class UdpServer : boost::noncopyable
   void setHighWaterMarkCallback(UdpHighWaterMarkCallback&& cb)
   { highWaterMarkCallback_ = std::move(cb); }
 
+  void setStartedRecvCallback(const UdpStartedRecvCallback& cb)
+  { startedRecvCallback_ = cb; }
+
+  void setStartedRecvCallback(UdpStartedRecvCallback&& cb)
+  { startedRecvCallback_ = std::move(cb); }
+
  private:
   EventLoop* loop_;  // the acceptor loop
   const string hostport_;
@@ -82,6 +88,7 @@ class UdpServer : boost::noncopyable
   UdpMessageCallback messageCallback_;
   UdpWriteCompleteCallback writeCompleteCallback_;
   UdpHighWaterMarkCallback highWaterMarkCallback_;
+  UdpStartedRecvCallback startedRecvCallback_;
   AtomicInt32 started_;
 };
 
