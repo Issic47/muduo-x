@@ -176,9 +176,9 @@ void TcpSocket::setReusePort(bool on)
   int optval = on ? 1 : 0;
   int ret = ::setsockopt(fd(), SOL_SOCKET, SO_REUSEPORT,
                          &optval, static_cast<socklen_t>(sizeof optval));
-  if (ret < 0)
+  if (ret < 0 && on)
   {
-    LOG_SYSERR << "SO_REUSEPORT failed in Socket::setReusePort";
+    LOG_SYSERR << "SO_REUSEPORT failed";
   }
 #else
   if (on)
