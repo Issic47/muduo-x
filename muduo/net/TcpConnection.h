@@ -149,6 +149,7 @@ class TcpConnection : boost::noncopyable,
   void releaseAllFreeWriteReq();
 
   void setState(StateE s) { state_ = s; }
+  const char* stateToString() const;
 
   EventLoop* loop_;
   const string name_;

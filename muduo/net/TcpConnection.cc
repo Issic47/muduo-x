@@ -142,11 +142,28 @@ TcpConnection::~TcpConnection()
 {
   LOG_DEBUG << "TcpConnection::dtor[" <<  name_ << "] at " << this
             << " fd=" << socket_->fd()
-            << " state=" << state_;
+            << " state=" << stateToString();
   assert(state_ == kDisconnected);
   socket_->setData(nullptr);
   loop_->closeSocketInLoop(socket_->socket());
   releaseAllFreeWriteReq();
+}
+
+const char* TcpConnection::stateToString() const
+{
+  switch(state_)
+  {
+    case kDisconnected:
+      return "kDisconnected";
+    case kConnecting:
+      return "kConnecting";
+    case kConnected:
+      return "kConnected";
+    case kDisconnecting:
+      return "kDisconnecting";
+    default:
+      return "unknown state";
+  }
 }
 
 void TcpConnection::releaseAllFreeWriteReq()
@@ -486,7 +503,7 @@ void TcpConnection::readCallback( uv_stream_t *handle, ssize_t nread, const uv_b
 void TcpConnection::handleClose()
 {
   loop_->assertInLoopThread();
-  LOG_TRACE << "fd = " << socket_->fd() << " state = " << state_;
+  LOG_TRACE << "fd = " << socket_->fd() << " state = " << stateToString();
   assert(state_ == kConnected || state_ == kDisconnecting);
   // we don't close fd, leave it to dtor, so we can find leaks easily.
   setState(kDisconnected);
