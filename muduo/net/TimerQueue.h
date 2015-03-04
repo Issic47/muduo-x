@@ -64,7 +64,6 @@ class TimerQueue : boost::noncopyable
  private:
   EventLoop* loop_;
   TimerList allocTimers_;
-  TimerList freeTimers_;
 };
 
 }

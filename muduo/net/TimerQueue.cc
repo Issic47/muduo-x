@@ -25,7 +25,7 @@ using namespace muduo::net;
 
 TimerQueue::TimerQueue(EventLoop* loop)
   : loop_(loop),
-    freeTimers_()
+    allocTimers_()
 {
 }
 
@@ -37,18 +37,9 @@ TimerId TimerQueue::addTimer(const TimerCallback& cb,
                              Timestamp when,
                              double interval)
 {
-  TimerPtr timer = nullptr;
-  if (freeTimers_.empty()) 
-  {
-    timer = boost::make_shared<Timer>(cb, when, interval,
+  TimerPtr timer = boost::make_shared<Timer>(cb, when, interval,
       boost::bind(&TimerQueue::afterTimeoutCallback, this, _1));
-    allocTimers_.push_back(timer);
-  }
-  else
-  {
-    timer = freeTimers_.back();
-    freeTimers_.pop_back();
-  }
+  allocTimers_.push_back(timer);
 
   loop_->runInLoop(
       boost::bind(&TimerQueue::addTimerInLoop, this, timer));
@@ -59,18 +50,9 @@ TimerId TimerQueue::addTimer(TimerCallback&& cb,
                              Timestamp when,
                              double interval)
 {
-  TimerPtr timer = nullptr;
-  if (freeTimers_.empty()) 
-  {
-    timer = boost::make_shared<Timer>(std::move(cb), when, interval, 
+  TimerPtr timer = boost::make_shared<Timer>(std::move(cb), when, interval, 
       boost::bind(&TimerQueue::afterTimeoutCallback, this, _1));
-    allocTimers_.push_back(timer);
-  }
-  else
-  {
-    timer = freeTimers_.back();
-    freeTimers_.pop_back();
-  }
+  allocTimers_.push_back(timer);
     
   loop_->runInLoop(
       boost::bind(&TimerQueue::addTimerInLoop, this, timer));
@@ -108,7 +90,7 @@ void TimerQueue::afterTimeoutCallback( TimerPtr timer )
 {
   assert(timer);
   if (!timer->repeat()) {
-    freeTimers_.push_back(timer);
+    loop_->queueInLoop(boost::bind(&TimerList::remove, allocTimers_, timer));
   }
 }
 
@@ -119,7 +101,6 @@ void TimerQueue::cancelInLoop(TimerId timerId)
   if (timer) 
   {
     timer->stop();
-    freeTimers_.push_back(timer);
   }
   else
   {
