@@ -101,6 +101,7 @@ void TimerQueue::cancelInLoop(TimerId timerId)
   if (timer) 
   {
     timer->stop();
+    allocTimers_.remove(timer);
   }
   else
   {
