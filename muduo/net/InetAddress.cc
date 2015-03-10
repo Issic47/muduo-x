@@ -16,6 +16,19 @@
 #include <netdb.h>
 #include <strings.h>  // bzero
 #include <netinet/in.h>
+
+// FIXME: hack
+void IN6_SET_ADDR_LOOPBACK(struct in6_addr *a)
+{
+  memset(a->s6_addr, 0, sizeof(struct in6_addr));
+  a->s6_addr[15] = 1;
+}
+
+void IN6_SET_ADDR_UNSPECIFIED(struct in6_addr *a)
+{
+  memset(a->s6_addr, 0, sizeof(struct in6_addr));
+}
+
 #endif // !NATIVE_WIN32
 
 #include <boost/static_assert.hpp>
@@ -36,15 +49,15 @@
 using namespace muduo;
 using namespace muduo::net;
 
-muduo::net::InetAddress::InetAddress(int af /*= AF_NET*/, 
-                                     uint16_t port /*= 0*/, 
-                                     bool loopbackOnly /*= false*/ )
+InetAddress::InetAddress(int af /*= AF_NET*/, 
+                         uint16_t port /*= 0*/, 
+                         bool loopbackOnly /*= false*/ )
 {
   bzero(&addr_, sizeof addr_);
   switch (af)
   {
   case AF_INET:
-    addr_.u.in.sin_family = af;
+    addr_.u.in.sin_family = static_cast<uint16_t>(af);
     addr_.u.in.sin_port = htons(port);
     addr_.u.in.sin_addr.s_addr = 
       loopbackOnly ? htonl(INADDR_LOOPBACK) : htonl(INADDR_ANY);
@@ -52,7 +65,7 @@ muduo::net::InetAddress::InetAddress(int af /*= AF_NET*/,
     break;
 
   case AF_INET6:
-    addr_.u.in6.sin6_family = af;
+    addr_.u.in6.sin6_family = static_cast<uint16_t>(af);
     addr_.u.in6.sin6_port = htons(port);
     if (loopbackOnly) 
     {
@@ -232,23 +245,23 @@ bool InetAddress::resolve(StringArg hostname, InetAddress* out)
   return false;
 }
 
-bool muduo::net::operator==( const InetAddress& lhs, const InetAddress&rhs )
+bool InetAddress::operator==(const InetAddress&rhs)
 {
-  if (lhs.sa_family() != rhs.sa_family())
+  if (this->sa_family() != rhs.sa_family())
     return false;
 
-  switch (lhs.sa_family())
+  switch (this->sa_family())
   {
   case AF_INET:
-    return (lhs.addr_.u.in.sin_port == rhs.addr_.u.in.sin_port &&
-        lhs.addr_.u.in.sin_addr.s_addr == rhs.addr_.u.in.sin_addr.s_addr);
+    return (this->addr_.u.in.sin_port == rhs.addr_.u.in.sin_port &&
+        this->addr_.u.in.sin_addr.s_addr == rhs.addr_.u.in.sin_addr.s_addr);
 
   case AF_INET6:
-    return (lhs.addr_.u.in6.sin6_port == rhs.addr_.u.in6.sin6_port &&
-            0 == memcmp(&lhs.addr_.u.in6.sin6_addr, &rhs.addr_.u.in6.sin6_addr, sizeof(in6_addr)));
+    return (this->addr_.u.in6.sin6_port == rhs.addr_.u.in6.sin6_port &&
+            0 == memcmp(&this->addr_.u.in6.sin6_addr, &rhs.addr_.u.in6.sin6_addr, sizeof(in6_addr)));
 
   default:
-    LOG_SYSERR << "No support address family:" << lhs.sa_family() 
+    LOG_SYSERR << "No support address family:" << this->sa_family() 
                << " in operator==(const InetAddress&, const InetAddress&)";
     return false;
   }

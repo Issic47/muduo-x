@@ -20,11 +20,11 @@ void muduo::net::defaultUdpMessageCallback(const UdpSocketPtr& socket,
 
 UdpSocket::UdpSocket(EventLoop* loop)
   : loop_(CHECK_NOTNULL(loop)),
+    inputBuffer_(65536),
     bytesInSend_(0),
     highWaterMark_(64*1024*1024),
-    inputBuffer_(65536),
-    receiving_(false),
-    connectModel_(false)
+    connectModel_(false),
+    receiving_(false)
 {
   socket_ = loop_->getFreeUdpSocket();
   socket_->data = this;
@@ -32,11 +32,11 @@ UdpSocket::UdpSocket(EventLoop* loop)
 
 UdpSocket::UdpSocket( EventLoop* loop, const InetAddress& bindAddr, bool reuseAddr )
   : loop_(CHECK_NOTNULL(loop)),
-  bytesInSend_(0),
-  highWaterMark_(64*1024*1024),
-  inputBuffer_(65536),
-  receiving_(false),
-  connectModel_(false)
+    inputBuffer_(65536),
+    bytesInSend_(0),
+    highWaterMark_(64*1024*1024),
+    connectModel_(false),
+    receiving_(false)
 {
   socket_ = loop_->getFreeUdpSocket();
   socket_->data = this;
@@ -154,12 +154,12 @@ void UdpSocket::sendInLoop(int messageId, const InetAddress& addr, const StringP
 void UdpSocket::sendInLoop(int messageId, const InetAddress& addr, const void* data, size_t len)
 {
   loop_->assertInLoopThread();
-  uv_buf_t buf = uv_buf_init(static_cast<char*>(const_cast<void*>(data)), len);
+  uv_buf_t buf = uv_buf_init(static_cast<char*>(const_cast<void*>(data)), static_cast<unsigned int>(len));
   ssize_t nwrite = uv_udp_try_send(socket_, &buf, 1, &addr.getSockAddr());
   bool faultError = false;
   if (nwrite > 0)
   {
-    if (len != nwrite)
+    if (len != static_cast<size_t>(nwrite))
     {
       LOG_ERROR << "UDP data send truncated: " << len << "B to " << nwrite << "B";
     }
@@ -170,7 +170,7 @@ void UdpSocket::sendInLoop(int messageId, const InetAddress& addr, const void* d
   }
   else
   {
-    int err = nwrite;
+    int err = static_cast<int>(nwrite);
     nwrite = 0;
     if (err != UV_ENOSYS && err != UV_EAGAIN)
     {
@@ -194,11 +194,11 @@ void UdpSocket::sendInLoop(int messageId, const InetAddress& addr, const void* d
     sendRequest->req.data = sendRequest;
     sendRequest->buf.ensureWritableBytes(len);
     sendRequest->messageId = messageId;
-    uv_buf_t buf = uv_buf_init(sendRequest->buf.beginWrite(), len);
+    uv_buf_t restBuf = uv_buf_init(sendRequest->buf.beginWrite(), static_cast<unsigned int>(len));
     sendRequest->buf.append(data, len);
     int err = uv_udp_send(&sendRequest->req, 
                           socket_, 
-                          &buf, 
+                          &restBuf, 
                           1,
                           &addr.getSockAddr(),
                           &UdpSocket::sendCallback);
@@ -289,7 +289,7 @@ void UdpSocket::recvCallback(uv_udp_t *handle,
   UdpSocket *socket = static_cast<UdpSocket*>(handle->data);
   if (nread < 0) 
   {
-    LOG_SYSERR << uv_strerror(nread) << " in UdpSocket::recvCallback";  
+    LOG_SYSERR << uv_strerror(static_cast<int>(nread)) << " in UdpSocket::recvCallback";  
   }
   else
   {

@@ -279,10 +279,10 @@ ProcessInfo::CpuTime ProcessInfo::cpuTime()
   ProcessInfo::CpuTime t;
   uv_rusage_t resource_usage;
   if (uv_getrusage(&resource_usage) == 0) {
-    t.userSeconds = resource_usage.ru_utime.tv_sec + 
-      resource_usage.ru_utime.tv_usec / 1000000.0;
-    t.systemSeconds = resource_usage.ru_stime.tv_sec +
-      resource_usage.ru_stime.tv_usec / 1000000.0;
+    t.userSeconds = static_cast<double>(resource_usage.ru_utime.tv_sec) + 
+      static_cast<double>(resource_usage.ru_utime.tv_usec) / 1000000.0;
+    t.systemSeconds = static_cast<double>(resource_usage.ru_stime.tv_sec) +
+      static_cast<double>(resource_usage.ru_stime.tv_usec) / 1000000.0;
   }
 
   return t;

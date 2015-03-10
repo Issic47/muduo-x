@@ -139,7 +139,7 @@ int FileUtil::ReadSmallFile::readToString(int maxSize,
   // FIXME(cbj):
   //BOOST_STATIC_ASSERT(sizeof(off_t) == 8);
   assert(content != NULL);
-  int err = err_;
+  auto err = err_;
   if (fd_ >= 0)
   {
     content->clear();
@@ -179,7 +179,7 @@ int FileUtil::ReadSmallFile::readToString(int maxSize,
       uv_fs_t read_req;
       utilities::FSReqAutoCleanup helper(&read_req);
       
-      uv_buf_t buf = uv_buf_init(buf_, toRead);
+      uv_buf_t buf = uv_buf_init(buf_, static_cast<unsigned int>(toRead));
       ssize_t n = uv_fs_read(NULL, &read_req, fd_, &buf, 1, -1, NULL);
       if (n > 0)
       {
@@ -195,17 +195,17 @@ int FileUtil::ReadSmallFile::readToString(int maxSize,
       }
     }
   }
-  return err;
+  return static_cast<int>(err);
 }
 
 int FileUtil::ReadSmallFile::readToBuffer(int* size)
 {
-  int err = err_;
+  auto err = err_;
   if (fd_ >= 0)
   {
     uv_fs_t read_req;
     utilities::FSReqAutoCleanup helper(&read_req);
-    uv_buf_t buf = uv_buf_init(buf_, sizeof(buf_) - 1);
+    uv_buf_t buf = uv_buf_init(buf_, static_cast<int>(sizeof(buf_) - 1));
     ssize_t n = uv_fs_read(NULL, &read_req, fd_, &buf, 1, 0, NULL);
     if (n >= 0)
     {
@@ -220,7 +220,7 @@ int FileUtil::ReadSmallFile::readToBuffer(int* size)
       err = read_req.result;
     }
   }
-  return err;
+  return static_cast<int>(err);
 }
 
 template 

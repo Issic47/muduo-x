@@ -12,7 +12,7 @@ using namespace muduo::net;
 
 void threadFunc(EventLoop* loop)
 {
-  InetAddress serverAddr("127.0.0.1", 1234); // should succeed
+  InetAddress serverAddr(AF_INET, "127.0.0.1", 1234); // should succeed
   TcpClient client(loop, serverAddr, "TcpClient");
   client.connect();
 
@@ -22,7 +22,7 @@ void threadFunc(EventLoop* loop)
 
 int main(int argc, char* argv[])
 {
-  Logger::setLogLevel(Logger::DEBUG);
+  Logger::setLogLevel(Logger::kDEBUG);
 
   EventLoop loop;
   loop.runAfter(3.0, boost::bind(&EventLoop::quit, &loop));

@@ -35,25 +35,25 @@ class Timer : public boost::enable_shared_from_this<Timer>, boost::noncopyable
         double interval,
         const AfterTimeoutCallback& afterTimeoutCallback)
     : callback_(cb),
+      afterTimeoutCallback_(afterTimeoutCallback),
+      timer_(new uv_timer_t),
       expiration_(when),
+      init_(false),
       interval_(interval),
       repeat_(interval > 0.0),
-      sequence_(s_numCreated_.incrementAndGet()),
-      afterTimeoutCallback_(afterTimeoutCallback),
-      init_(false),
-      timer_(new uv_timer_t)
+      sequence_(s_numCreated_.incrementAndGet())
   { }
 
   Timer(TimerCallback&& cb, Timestamp when, double interval,
         AfterTimeoutCallback &&afterTimeoutCallback)
     : callback_(std::move(cb)),
+      afterTimeoutCallback_(std::move(afterTimeoutCallback)),
+      timer_(new uv_timer_t),
       expiration_(when),
+      init_(false),
       interval_(interval),
       repeat_(interval > 0.0),
-      sequence_(s_numCreated_.incrementAndGet()),
-      afterTimeoutCallback_(std::move(afterTimeoutCallback)),
-      init_(false),
-      timer_(new uv_timer_t)
+      sequence_(s_numCreated_.incrementAndGet())
   { }
 
   ~Timer() 

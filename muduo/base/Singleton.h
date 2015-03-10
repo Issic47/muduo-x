@@ -48,6 +48,7 @@ class Singleton : boost::noncopyable
     if (!detail::has_no_destroy<T>::Has)
     {
       int err = ::atexit(destroy);
+      (void)(err);
     }
   }
 

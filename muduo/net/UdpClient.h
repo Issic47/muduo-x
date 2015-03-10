@@ -21,7 +21,7 @@ class UdpClient : boost::noncopyable
 public:
   UdpClient(EventLoop* loop,
             const InetAddress& serverAddr,
-            const string& name);
+            const string& clientName);
   ~UdpClient();
 
   void connect();

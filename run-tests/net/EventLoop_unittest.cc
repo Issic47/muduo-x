@@ -1,6 +1,6 @@
 #include <muduo/net/EventLoop.h>
 #include <muduo/base/Thread.h>
-
+#include <muduo/base/Logging.h>
 #include <boost/bind.hpp>
 
 #include <assert.h>
@@ -16,6 +16,7 @@ void callback()
 {
   printf("callback(): pid = %d, tid = %d\n", getpid(), CurrentThread::tid());
   EventLoop anotherLoop;
+  //EventLoop::getEventLoopOfCurrentThread()->runAfter(1.0, callback);
 }
 
 void threadFunc()
@@ -32,7 +33,7 @@ void threadFunc()
 int main()
 {
   printf("main(): pid = %d, tid = %d\n", getpid(), CurrentThread::tid());
-
+  Logger::setLogLevel(Logger::kTRACE);
   assert(EventLoop::getEventLoopOfCurrentThread() == NULL);
   EventLoop loop;
   assert(EventLoop::getEventLoopOfCurrentThread() == &loop);

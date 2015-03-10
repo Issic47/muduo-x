@@ -45,7 +45,7 @@ class ReadSmallFile : boost::noncopyable
 
  private:
   int fd_;
-  int err_;
+  ssize_t err_;
   char buf_[kBufferSize];
 };
 

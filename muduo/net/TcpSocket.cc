@@ -22,8 +22,8 @@ using namespace muduo;
 using namespace muduo::net;
 
 
-TcpSocket::TcpSocket( uv_tcp_t *socket ) 
-  : socket_(CHECK_NOTNULL(socket))
+TcpSocket::TcpSocket( uv_tcp_t *socketHandle ) 
+  : socket_(CHECK_NOTNULL(socketHandle))
 {
 }
 
@@ -33,12 +33,12 @@ TcpSocket::~TcpSocket()
 
 uv_os_sock_t TcpSocket::fd() const
 {
-  uv_os_fd_t fd;
+  uv_os_fd_t fdHandle;
   int err = uv_fileno(
-    reinterpret_cast<const uv_handle_t*>(socket_), &fd);
+    reinterpret_cast<const uv_handle_t*>(socket_), &fdHandle);
   if (err)
     LOG_ERROR << uv_strerror(err) << " in Socket::fd";
-  return reinterpret_cast<uv_os_sock_t>(fd);
+  return reinterpret_cast<uv_os_sock_t>(fdHandle);
 }
 
 

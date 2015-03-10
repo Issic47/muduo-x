@@ -10,12 +10,12 @@ using namespace muduo;
 using namespace muduo::net;
 
 
-UdpClient::UdpClient(EventLoop* loop, const InetAddress& serverAddr, const string& name )
+UdpClient::UdpClient(EventLoop* loop, const InetAddress& serverAddr, const string& clientName )
   : loop_(CHECK_NOTNULL(loop)),
-    name_(name),
-    socket_(new UdpSocket(loop)),
+    name_(clientName),
+    peerAddr_(serverAddr),
     messageCallback_(defaultUdpMessageCallback),
-    peerAddr_(serverAddr)
+    socket_(new UdpSocket(loop))
 {
   socket_->connect(peerAddr_);
 }

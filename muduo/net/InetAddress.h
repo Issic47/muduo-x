@@ -110,9 +110,8 @@ class InetAddress : public muduo::copyable
   static bool resolve(StringArg hostname, InetAddress* result);
   // static std::vector<InetAddress> resolveAll(const char* hostname, uint16_t port = 0);
 
-  friend bool operator==(const InetAddress& lhs, const InetAddress&rhs);
-  friend bool operator!=(const InetAddress& lhs, const InetAddress&rhs) 
-  { return !(lhs == rhs); }
+  bool operator==(const InetAddress&rhs);
+  bool operator!=(const InetAddress&rhs) { return !(*this == rhs); }
 
  private:
    struct sa addr_;

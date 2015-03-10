@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
   if (argc > 1)
   {
     benchmark = true;
-    Logger::setLogLevel(Logger::WARN);
+    Logger::setLogLevel(Logger::kWARN);
     numThreads = atoi(argv[1]);
   }
   EventLoop loop;

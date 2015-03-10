@@ -37,7 +37,8 @@ thread_local time_t t_lastSecond;
 
 const char* strerror_tl(int savedErrno)
 {
-  strerror_r(savedErrno, t_errnobuf, sizeof t_errnobuf);
+  auto err = strerror_r(savedErrno, t_errnobuf, sizeof t_errnobuf);
+  (void)(err);
   return t_errnobuf;
 }
 

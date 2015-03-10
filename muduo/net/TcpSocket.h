@@ -37,7 +37,7 @@ class TcpSocket : boost::noncopyable
 {
  public:
   // Socket instance will own this socket
-  explicit TcpSocket(uv_tcp_t *socket);
+  explicit TcpSocket(uv_tcp_t *socketHandle);
 
   // Socket(Socket &&other);
 

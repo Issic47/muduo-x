@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
   if (argc > 1)
   {
     EventLoop loop;
-    InetAddress serverAddr(argv[1], 2000);
+    InetAddress serverAddr(AF_INET, argv[1], 2000);
 
     int n = 1;
     if (argc > 2)

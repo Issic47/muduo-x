@@ -28,8 +28,8 @@ Connector::Connector(EventLoop* loop, const InetAddress& serverAddr)
     serverAddr_(serverAddr),
     connect_(false),
     state_(kDisconnected),
-    retryDelayMs_(kInitRetryDelayMs),
-    socket_(nullptr)
+    socket_(nullptr),
+    retryDelayMs_(kInitRetryDelayMs)
 {
   LOG_DEBUG << "ctor[" << this << "]";
 }

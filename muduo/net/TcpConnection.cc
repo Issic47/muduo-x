@@ -126,8 +126,8 @@ TcpConnection::TcpConnection(const string& nameArg,
     localAddr_(localAddr),
     peerAddr_(peerAddr),
     highWaterMark_(64*1024*1024),
-    isClosing_(false),
-    outputBuffer_(new OutputBuffer)
+    outputBuffer_(new OutputBuffer),
+    isClosing_(false)
 {
   assert(socket->loop);
   assert(socket->loop->data);
@@ -255,7 +255,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
   {
     uv_buf_t buf = uv_buf_init(
       static_cast<char*>(const_cast<void*>(data)), 
-      len);
+      static_cast<unsigned int>(len));
     nwrote = socket_->tryWrite(&buf, 1);
     if (nwrote >= 0)
     {
@@ -267,7 +267,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     }
     else
     {
-      int err = nwrote;
+      int err = static_cast<int>(nwrote);
       nwrote = 0;
       if (err != UV_EAGAIN && err != UV_ENOSYS)
       {
@@ -297,7 +297,7 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     writeReq->conn = shared_from_this();
     writeReq->buf = uv_buf_init(
       outputBuffer_->append(static_cast<const char*>(data)+nwrote, remaining),
-      remaining);
+      static_cast<unsigned int>(remaining));
     int err = socket_->write(&writeReq->req, &writeReq->buf, 1, &TcpConnection::writeCallback);
     if (err)
     {
@@ -478,15 +478,15 @@ void TcpConnection::readCallback( uv_stream_t *handle, ssize_t nread, const uv_b
   TcpConnection *connection = static_cast<TcpConnection*>(handle->data);
   if (nread < 0)
   {
-    LOG_DEBUG << uv_strerror(nread);
+    LOG_DEBUG << uv_strerror(static_cast<int>(nread));
     if (nread == UV_EOF || nread == UV_ECONNRESET)
     {
       connection->handleClose();
     } 
     else 
     {
-      LOG_SYSERR << uv_strerror(nread) << " in TcpConnection::readCallback";
-      connection->handleError(nread);
+      LOG_SYSERR << uv_strerror(static_cast<int>(nread)) << " in TcpConnection::readCallback";
+      connection->handleError(static_cast<int>(nread));
     }
   }
   else if (nread > 0)

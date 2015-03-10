@@ -65,8 +65,8 @@ EventLoop::EventLoop()
     iteration_(0),
     threadId_(CurrentThread::tid()),
     //poller_(Poller::newDefaultPoller(this)),
-    timerQueue_(new TimerQueue(this)),
     initLoopTime_(0),
+    timerQueue_(new TimerQueue(this)),
     freeTcpSocket_(new uv_tcp_t),
     freeUdpSocket_(new uv_udp_t)
     //currentActiveChannel_(NULL)
