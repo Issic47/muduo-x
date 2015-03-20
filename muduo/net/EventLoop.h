@@ -65,7 +65,8 @@ class EventLoop : boost::noncopyable
   /// Time when poll returns, usually means data arrival.
   ///
   Timestamp pollReturnTime() const {
-    return addTime(initTimeStamp_, static_cast<double>(uv_now(&loop_)) * 1000.0);
+    return addTime(initTimeStamp_, 
+      static_cast<double>(uv_now(&loop_) - initLoopTime_) / 1000.0);
   }
 
   int64_t iteration() const { return iteration_; }
