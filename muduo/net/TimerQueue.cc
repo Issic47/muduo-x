@@ -39,7 +39,7 @@ TimerId TimerQueue::addTimer(const TimerCallback& cb,
 {
   TimerPtr timer = boost::make_shared<Timer>(cb, when, interval,
       boost::bind(&TimerQueue::afterTimeoutCallback, this, _1));
-  allocTimers_.push_back(timer);
+  allocTimers_.insert(timer);
 
   loop_->runInLoop(
       boost::bind(&TimerQueue::addTimerInLoop, this, timer));
@@ -52,7 +52,7 @@ TimerId TimerQueue::addTimer(TimerCallback&& cb,
 {
   TimerPtr timer = boost::make_shared<Timer>(std::move(cb), when, interval, 
       boost::bind(&TimerQueue::afterTimeoutCallback, this, _1));
-  allocTimers_.push_back(timer);
+  allocTimers_.insert(timer);
     
   loop_->runInLoop(
       boost::bind(&TimerQueue::addTimerInLoop, this, timer));
@@ -90,7 +90,7 @@ void TimerQueue::afterTimeoutCallback( TimerPtr timer )
 {
   assert(timer);
   if (!timer->repeat()) {
-    loop_->queueInLoop(boost::bind(&TimerList::remove, allocTimers_, timer));
+    loop_->queueInLoop(boost::bind(&TimerQueue::removeTimer, this, timer));
   }
 }
 
@@ -101,7 +101,7 @@ void TimerQueue::cancelInLoop(TimerId timerId)
   if (timer) 
   {
     timer->stop();
-    loop_->queueInLoop(boost::bind(&TimerList::remove, allocTimers_, timer));
+    loop_->queueInLoop(boost::bind(&TimerQueue::removeTimer, this, timer));
   }
   else
   {
@@ -109,3 +109,8 @@ void TimerQueue::cancelInLoop(TimerId timerId)
   }
 }
 
+
+void TimerQueue::removeTimer( TimerPtr timer )
+{
+  allocTimers_.erase(timer);
+}

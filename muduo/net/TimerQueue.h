@@ -12,6 +12,7 @@
 #define MUDUO_NET_TIMERQUEUE_H
 
 #include <list>
+#include <set>
 
 #include <boost/noncopyable.hpp>
 
@@ -54,12 +55,13 @@ class TimerQueue : boost::noncopyable
   void cancel(TimerId timerId);
 
  private:
-  typedef std::list<TimerPtr> TimerList;
+  typedef std::set<TimerPtr> TimerList;
 
   void afterTimeoutCallback(TimerPtr timer);
 
   void addTimerInLoop(TimerPtr timer);
   void cancelInLoop(TimerId timerId);
+  void removeTimer(TimerPtr timer);
 
  private:
   EventLoop* loop_;
